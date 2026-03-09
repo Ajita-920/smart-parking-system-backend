@@ -8,17 +8,11 @@ public class ParkingLocation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     private String name;
-
     private String address;
-
     private double latitude;
-
     private double longitude;
-
     private int totalSlots;
-
     private int availableSlots;
 
     @ManyToOne

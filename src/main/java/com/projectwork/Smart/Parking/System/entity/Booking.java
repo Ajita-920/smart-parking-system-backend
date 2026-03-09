@@ -21,7 +21,7 @@ public class Booking {
 
     private LocalDateTime endTime;
 
-    private String status; // BOOKED, COMPLETED, CANCELLED
+    private String status;
 
     public void setUser(User user) {
     }

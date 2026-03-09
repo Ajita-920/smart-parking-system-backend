@@ -1,26 +1,40 @@
 package com.projectwork.Smart.Parking.System.controller;
 
-
-import com.projectwork.Smart.Parking.System.entity.User;
-import com.projectwork.Smart.Parking.System.repository.UserRepository;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.projectwork.Smart.Parking.System.dto.request.LoginRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.RegisterRequestDto;
+import com.projectwork.Smart.Parking.System.dto.response.AuthResponseDto;
+import com.projectwork.Smart.Parking.System.dto.ApiResponse;
+import com.projectwork.Smart.Parking.System.service.AuthService;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "*")   // Allow React frontend to connect
 public class AuthController {
 
-    private final UserRepository userRepository;
+    @Autowired
+    private AuthService authService;
 
-    public AuthController(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    // ==================== REGISTER ====================
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse> register(
+            @Valid @RequestBody RegisterRequestDto request) {
+
+        AuthResponseDto response = authService.registerUser(request);
+
+        return ResponseEntity.ok(new ApiResponse("User registered successfully!", response));
     }
 
-    @PostMapping("/register")
-    public User register(@RequestBody User user) {
+    // ==================== LOGIN ====================
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse> login(
+            @Valid @RequestBody LoginRequestDto request) {
 
-        return userRepository.save(user);
+        AuthResponseDto response = authService.loginUser(request);
+
+        return ResponseEntity.ok(new ApiResponse("Login successful!", response));
     }
 }
