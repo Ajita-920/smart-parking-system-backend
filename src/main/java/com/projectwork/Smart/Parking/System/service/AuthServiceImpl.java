@@ -40,12 +40,14 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getRole(), savedUser.getId());
 
-        AuthResponseDto response = new AuthResponseDto();
-        response.setToken(token);
-        response.setUserId(savedUser.getId());
-        response.setName(savedUser.getName());
-        response.setEmail(savedUser.getEmail());
-        response.setRole(savedUser.getRole());
+        AuthResponseDto response = new AuthResponseDto(
+                token,
+                "Bearer",
+                savedUser.getId(),
+                savedUser.getName(),
+                savedUser.getEmail(),
+                savedUser.getRole()
+        );
 
         return response;
     }
@@ -62,12 +64,14 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
 
-        AuthResponseDto response = new AuthResponseDto();
-        response.setToken(token);
-        response.setUserId(user.getId());
-        response.setName(user.getName());
-        response.setEmail(user.getEmail());
-        response.setRole(user.getRole());
+        AuthResponseDto response = new AuthResponseDto(
+                token,
+                "Bearer",
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole()
+        );
 
         return response;
     }

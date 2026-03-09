@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 @Data
 public class BookingResponseDto {
     private Long bookingId;
-    private String parkingLocationName;
+    private String parkingName;
     private String status;
     private LocalDateTime startTime;
     private LocalDateTime endTime;

@@ -1,29 +1,28 @@
 package com.projectwork.Smart.Parking.System.controller;
 
-import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
-import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
+import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
+import com.projectwork.Smart.Parking.System.dto.ApiResponse;
+import com.projectwork.Smart.Parking.System.service.algorithm.DijkstraService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-    @RequestMapping("/api/parking")
-    public class ParkingController {
+@RequestMapping("/api/parking")
+@CrossOrigin(origins = "*")
+public class ParkingController {
 
-        private final ParkingLocationRepository parkingRepository;
+    @Autowired
+    private DijkstraService dijkstraService;
 
-        public ParkingController(ParkingLocationRepository parkingRepository) {
-            this.parkingRepository = parkingRepository;
-        }
+    // Search nearest parking using Dijkstra
+    @GetMapping("/nearby")
+    public ResponseEntity<ApiResponse> findNearbyParking(
+            @RequestParam double latitude,
+            @RequestParam double longitude) {
 
-        @GetMapping("/available")
-        public List<ParkingLocation> getAvailableParking() {
-            return parkingRepository.findByAvailableSlotsGreaterThan(0);
-        }
+        ParkingLocationResponseDto nearest = dijkstraService.findNearestParking(latitude, longitude);
 
-        @PostMapping("/add")
-        public ParkingLocation addParking(@RequestBody ParkingLocation parking) {
-            return parkingRepository.save(parking);
-        }
+        return ResponseEntity.ok(new ApiResponse("Nearest parking found successfully!", nearest));
     }
-
+}

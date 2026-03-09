@@ -1,10 +1,19 @@
 package com.projectwork.Smart.Parking.System.entity;
 
-
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
 @Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name="bookings")
 public class Booking {
 
     @Id
@@ -18,17 +27,14 @@ public class Booking {
     private ParkingSlot slot;
 
     private LocalDateTime startTime;
-
     private LocalDateTime endTime;
-
     private String status;
 
-    public void setUser(User user) {
-    }
 
-    public void setSlot(ParkingSlot slot) {
-    }
+    @ManyToOne
+    @JoinColumn(name = "location_id")
+    private ParkingLocation parkingLocation;
 
-    public void setStatus(String booked) {
-    }
+    private Double totalAmount;
+
 }

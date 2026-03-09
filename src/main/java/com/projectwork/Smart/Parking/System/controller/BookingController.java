@@ -1,40 +1,32 @@
 package com.projectwork.Smart.Parking.System.controller;
 
-
-import com.projectwork.Smart.Parking.System.entity.Booking;
-import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
-import com.projectwork.Smart.Parking.System.entity.User;
-import com.projectwork.Smart.Parking.System.repository.ParkingSlotRepository;
-import com.projectwork.Smart.Parking.System.repository.UserRepository;
+import com.projectwork.Smart.Parking.System.dto.request.BookingRequestDto;
+import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
+import com.projectwork.Smart.Parking.System.dto.ApiResponse;
 import com.projectwork.Smart.Parking.System.service.BookingService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/bookings")
+@RequestMapping("/api/booking")
+@CrossOrigin(origins = "*")
 public class BookingController {
 
-    private final BookingService bookingService;
-    private final UserRepository userRepository;
-    private final ParkingSlotRepository slotRepository;
-
-    public BookingController(BookingService bookingService,
-                             UserRepository userRepository,
-                             ParkingSlotRepository slotRepository) {
-        this.bookingService = bookingService;
-        this.userRepository = userRepository;
-        this.slotRepository = slotRepository;
-    }
+    @Autowired
+    private BookingService bookingService;
 
     @PostMapping("/create")
-    public Booking createBooking(@RequestParam Long userId,
-                                 @RequestParam Long slotId) {
+    public ResponseEntity<ApiResponse> createBooking(
+            @Valid @RequestBody BookingRequestDto request,
+            Authentication authentication) {   // Gets logged-in user
 
-        User user = userRepository.findById(userId).orElseThrow();
-        ParkingSlot slot = slotRepository.findById(slotId).orElseThrow();
+        String userEmail = authentication.getName(); // from JWT
 
-        return bookingService.createBooking(user, slot);
+        BookingResponseDto response = bookingService.createBooking(request, userEmail);
+
+        return ResponseEntity.ok(new ApiResponse("Booking successful!", response));
     }
 }

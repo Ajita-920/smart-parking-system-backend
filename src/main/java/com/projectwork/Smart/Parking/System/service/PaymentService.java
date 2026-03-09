@@ -25,5 +25,6 @@ public class PaymentService {
     }
 
     public Payment processPayment(Payment payment) {
+        return payment;
     }
 }
