@@ -13,22 +13,24 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    // Password encoder for hashing passwords
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();   // Strong hashing for passwords
+        return new BCryptPasswordEncoder();
     }
 
+    // Main security filter chain
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())                     // Disable for REST API
+                .cors(cors -> {}) // enable CORS using CorsConfig bean
+                .csrf(csrf -> csrf.disable()) // disable CSRF for REST APIs
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()   // Allow register & login
-                        .requestMatchers("/api/parking/**").permitAll() // Temporary - change later
-                        .anyRequest().authenticated()                 // All other endpoints need login
+                        .requestMatchers("/api/auth/**", "/api/parking/**").permitAll() // public endpoints
+                        .anyRequest().authenticated() // all other endpoints require auth
                 )
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // JWT = no session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // no session (JWT)
                 );
 
         return http.build();

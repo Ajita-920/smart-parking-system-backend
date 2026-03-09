@@ -20,7 +20,7 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // Create a sample vendor if not exists
+        // Creating a sample vendor if not exists
         if (userRepository.findByEmail("vendor@gmail.com").isEmpty()) {
             User vendor = new User();
             vendor.setName("Kathmandu Parking Vendor");
@@ -33,7 +33,7 @@ public class DataInitializer implements CommandLineRunner {
 
         User vendor = userRepository.findByEmail("vendor@gmail.com").get();
 
-        // Add sample parking locations
+        // Adding sample parking locations
         if (parkingLocationRepository.count() == 0) {
             ParkingLocation p1 = new ParkingLocation();
             p1.setName("Amrit Science Campus Parking");
