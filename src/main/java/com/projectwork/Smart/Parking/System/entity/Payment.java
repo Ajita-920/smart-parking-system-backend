@@ -1,69 +1,34 @@
 package com.projectwork.Smart.Parking.System.entity;
 
 import jakarta.persistence.*;
+import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "payments")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Payment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private double amount;
-
-    private String method; // ESEWA or CASH
-
-    private String status;
-
-    private LocalDateTime paymentTime;
-
-    @OneToOne
+    @ManyToOne
+    @JoinColumn(name = "booking_id")
     private Booking booking;
 
-    public Payment() {}
+    private double amount;
 
-    public Long getId() {
-        return id;
-    }
+    private String status;           // PENDING, SUCCESS, FAILED
 
-    public double getAmount() {
-        return amount;
-    }
+    private String transactionId;
 
-    public void setAmount(double amount) {
-        this.amount = amount;
-    }
+    private String paymentMethod;    // ESEWA or CASH
 
-    public String getMethod() {
-        return method;
-    }
+    private LocalDateTime paidAt;
 
-    public void setMethod(String method) {
-        this.method = method;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getPaymentTime() {
-        return paymentTime;
-    }
-
-    public void setPaymentTime(LocalDateTime paymentTime) {
-        this.paymentTime = paymentTime;
-    }
-
-    public Booking getBooking() {
-        return booking;
-    }
-
-    public void setBooking(Booking booking) {
-        this.booking = booking;
-    }
+    private String paymentUrl;       // For eSewa payment link
 }

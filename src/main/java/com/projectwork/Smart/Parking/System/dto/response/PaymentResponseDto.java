@@ -1,7 +1,6 @@
 package com.projectwork.Smart.Parking.System.dto.response;
 
 import lombok.Data;
-
 import java.time.LocalDateTime;
 
 @Data
@@ -11,5 +10,7 @@ public class PaymentResponseDto {
     private double amount;
     private String status;
     private String transactionId;
+    private String esewaPaymentUrl;
     private LocalDateTime paidAt;
+    private String message;
 }

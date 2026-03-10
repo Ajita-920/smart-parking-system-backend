@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class PaymentRequestDto {
-
-    private Long bookingID;
-    private String paymentMethod;
+    private Long bookingId;
+    private String paymentMethod;   // "ESEWA" or "CASH"
 }
