@@ -28,7 +28,7 @@ public class VendorController {
     @Autowired
     private UserRepository userRepository;
 
-    // ==================== ADD NEW PARKING LOCATION ====================
+    // ADD NEW PARKING LOCATION ====================
     @PostMapping("/parking")
     public ResponseEntity<ApiResponse> addParkingLocation(
             @RequestBody ParkingLocationRequestDto request,
@@ -54,7 +54,7 @@ public class VendorController {
         return ResponseEntity.ok(new ApiResponse("Parking location added successfully!", responseDto));
     }
 
-    // ==================== GET MY PARKING LOCATIONS ====================
+    // GET MY PARKING LOCATIONS
     @GetMapping("/parking/my")
     public ResponseEntity<ApiResponse> getMyParkingLocations(Authentication authentication) {
         String email = authentication.getName();

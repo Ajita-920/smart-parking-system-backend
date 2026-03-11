@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class BookingServiceImpl implements BookingService {
@@ -77,6 +78,29 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public Booking saveBooking(Booking booking) {
         return null;
+    }
+
+    @Override
+    public List<BookingResponseDto> getMyBookings(String email) {
+        User driver = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Booking> bookings = bookingRepository.findByDriver(driver);
+
+        return bookings.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    private BookingResponseDto mapToResponse(Booking booking) {
+        BookingResponseDto dto = new BookingResponseDto();
+        dto.setBookingId(booking.getId());
+        dto.setParkingName(booking.getParkingLocation().getName());
+        dto.setStatus(booking.getStatus());
+        dto.setStartTime(booking.getStartTime());
+        dto.setEndTime(booking.getEndTime());
+        dto.setTotalAmount(booking.getTotalAmount());
+        return dto;
     }
 
     private double calculateAmount(ParkingLocation location) {

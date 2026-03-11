@@ -1,6 +1,7 @@
 package com.projectwork.Smart.Parking.System.repository;
 
 import com.projectwork.Smart.Parking.System.entity.Booking;
+import com.projectwork.Smart.Parking.System.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -15,4 +16,5 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             "AND b.status = 'CONFIRMED' " +
             "AND ((b.startTime < :endTime) AND (b.endTime > :startTime))")
     List<Booking> findOverlappingBookings(Long locationId, LocalDateTime startTime, LocalDateTime endTime);
+    List<Booking> findByDriver(User driver);
 }

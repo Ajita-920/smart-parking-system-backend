@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/booking")
 @CrossOrigin(origins = "*")
@@ -28,5 +30,12 @@ public class BookingController {
         BookingResponseDto response = bookingService.createBooking(request, userEmail);
 
         return ResponseEntity.ok(new ApiResponse("Booking successful!", response));
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<ApiResponse> getMyBookings(Authentication authentication) {
+        String email = authentication.getName();
+        List<BookingResponseDto> bookings = bookingService.getMyBookings(email);
+        return ResponseEntity.ok(new ApiResponse("My bookings fetched successfully!", bookings));
     }
 }
