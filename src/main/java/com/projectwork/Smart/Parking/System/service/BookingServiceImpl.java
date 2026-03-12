@@ -55,6 +55,7 @@ public class BookingServiceImpl implements BookingService {
         booking.setEndTime(request.getEndTime());
         booking.setStatus("CONFIRMED");
         booking.setTotalAmount(calculateAmount(location)); // simple calculation
+        booking.setDriver(driver);
 
         Booking savedBooking = bookingRepository.save(booking);
 

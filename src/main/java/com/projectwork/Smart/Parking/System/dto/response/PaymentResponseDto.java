@@ -10,7 +10,8 @@ public class PaymentResponseDto {
     private double amount;
     private String status;
     private String transactionId;
-    private String esewaPaymentUrl;
+    private String PaymentUrl;
     private LocalDateTime paidAt;
     private String message;
+    private String pidx;
 }

@@ -6,11 +6,9 @@ import com.projectwork.Smart.Parking.System.entity.Payment;
 
 public interface PaymentService {
 
-    /**
-     * Initiates payment for a booking
-     * Supports "ESEWA" and "CASH"
-     */
-    PaymentResponseDto initiatePayment(PaymentRequestDto request);
+        PaymentResponseDto initiateKhaltiPayment(PaymentRequestDto request);
 
-    Payment processPayment(Payment payment);
+        PaymentResponseDto verifyKhaltiPayment(String pidx);
+
+        Payment processPayment(Payment payment);
 }

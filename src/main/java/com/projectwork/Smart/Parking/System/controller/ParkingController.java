@@ -45,6 +45,7 @@ public class ParkingController {
         List<ParkingLocationResponseDto> dtos = locations.stream()
                 .map(loc -> {
                     ParkingLocationResponseDto dto = toResponseDto(loc);
+                    // Optional: calculate distance if coordinates given
                     if (userLat != null && userLon != null) {
                         dto.setDistance(calculateDistance(userLat, userLon, loc.getLatitude(), loc.getLongitude()));
                     }
@@ -55,17 +56,17 @@ public class ParkingController {
         return ResponseEntity.ok(new ApiResponse("Available parking locations retrieved", dtos));
     }
 
+    // Add this helper method (Haversine formula for distance in km)
     private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371; // km
+        final int R = 6371; // Earth radius in km
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
                 Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                        Math.sin(dLon/2) * Math.sin(dLon/2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return Math.round(R * c * 100.0) / 100.0; // 2 decimal places
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
-
     // Add this helper if not present
     private ParkingLocationResponseDto toResponseDto(ParkingLocation loc) {
         ParkingLocationResponseDto dto = new ParkingLocationResponseDto();
@@ -75,7 +76,7 @@ public class ParkingController {
         dto.setLatitude(loc.getLatitude());
         dto.setLongitude(loc.getLongitude());
         dto.setAvailableSlots(loc.getAvailableSlots());
-        dto.setVendorName(loc.getVendor() != null ? loc.getVendor().getName() : "Unknown");
+        // add other fields
         return dto;
     }
 }

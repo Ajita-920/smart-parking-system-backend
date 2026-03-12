@@ -6,11 +6,16 @@ import com.projectwork.Smart.Parking.System.entity.Booking;
 import com.projectwork.Smart.Parking.System.entity.Payment;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -22,51 +27,106 @@ public class PaymentServiceImpl implements PaymentService {
     @Autowired
     private PaymentRepository paymentRepository;
 
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    private static final String KHALTI_INITIATE_URL =
+            "https://dev.khalti.com/api/v2/epayment/initiate/";
+
+    private static final String KHALTI_SECRET_KEY = "test_secret_key_xxxxx";
+
     @Override
     @Transactional
-    public PaymentResponseDto initiatePayment(PaymentRequestDto request) {
+    public PaymentResponseDto initiateKhaltiPayment(PaymentRequestDto request) {
 
         Booking booking = bookingRepository.findById(request.getBookingId())
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        double amount = 100.0; // You can make this dynamic later (per hour × duration)
+        double amount = 100.0;
 
         Payment payment = new Payment();
         payment.setBooking(booking);
         payment.setAmount(amount);
         payment.setStatus("PENDING");
-        payment.setTransactionId("TXN-" + UUID.randomUUID().toString().substring(0, 8));
-        payment.setPaymentMethod(request.getPaymentMethod().toUpperCase());
+        payment.setTransactionId("TXN-" + UUID.randomUUID().toString().substring(0,8));
+        payment.setPaymentMethod("KHALTI");
 
         Payment savedPayment = paymentRepository.save(payment);
 
-        PaymentResponseDto response = new PaymentResponseDto();
-        response.setPaymentId(savedPayment.getId());
-        response.setBookingId(booking.getId());
-        response.setAmount(amount);
-        response.setStatus("PENDING");
-        response.setTransactionId(savedPayment.getTransactionId());
-        response.setPaidAt(LocalDateTime.now());
-        response.setMessage("Payment initiated successfully");
+        // ---------- KHALTI API REQUEST ----------
 
-        // ==================== ESEWA INTEGRATION ====================
-        if ("ESEWA".equalsIgnoreCase(request.getPaymentMethod())) {
-            String esewaTestUrl = "https://uat.esewa.com.np/epay/main?" +
-                    "amt=" + amount +
-                    "&psc=0& pdc=0&txAmt=0&tAmt=" + amount +
-                    "&pid=" + savedPayment.getTransactionId() +
-                    "&scd=EPAYTEST" +   // Test Merchant Code
-                    "&su=http://localhost:8080/api/payment/esewa/success" +
-                    "&fu=http://localhost:8080/api/payment/esewa/failure";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization","Key " + KHALTI_SECRET_KEY);
 
-            response.setEsewaPaymentUrl(esewaTestUrl);
-        }
+        Map<String,Object> body = new HashMap<>();
+        body.put("return_url","http://localhost:8080/api/payment/khalti/verify");
+        body.put("website_url","http://localhost:8080");
+        body.put("amount",(int)(amount * 100));
+        body.put("purchase_order_id",savedPayment.getTransactionId());
+        body.put("purchase_order_name","Parking Booking");
 
-        return response;
+        HttpEntity<Map<String,Object>> entity = new HttpEntity<>(body,headers);
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                KHALTI_INITIATE_URL,
+                HttpMethod.POST,
+                entity,
+                Map.class
+        );
+
+        Map<String,Object> khaltiResponse = response.getBody();
+
+        String paymentUrl = (String) khaltiResponse.get("payment_url");
+        String pidx = (String) khaltiResponse.get("pidx");
+
+        // ---------- RESPONSE ----------
+
+        PaymentResponseDto dto = new PaymentResponseDto();
+        dto.setPaymentId(savedPayment.getId());
+        dto.setBookingId(booking.getId());
+        dto.setAmount(amount);
+        dto.setStatus("PENDING");
+        dto.setTransactionId(savedPayment.getTransactionId());
+        dto.setPaidAt(LocalDateTime.now());
+        dto.setPaymentUrl(paymentUrl);
+        dto.setPidx(pidx);
+        dto.setMessage("Khalti payment initiated successfully");
+
+        return dto;
+    }
+
+    @Override
+    public PaymentResponseDto verifyKhaltiPayment(String pidx) {
+
+        String verifyUrl = "https://dev.khalti.com/api/v2/epayment/lookup/";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization","Key " + KHALTI_SECRET_KEY);
+
+        Map<String,String> body = new HashMap<>();
+        body.put("pidx",pidx);
+
+        HttpEntity<Map<String,String>> entity = new HttpEntity<>(body,headers);
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                verifyUrl,
+                HttpMethod.POST,
+                entity,
+                Map.class
+        );
+
+        Map<String,Object> result = response.getBody();
+
+        PaymentResponseDto dto = new PaymentResponseDto();
+        dto.setStatus((String) result.get("status"));
+        dto.setMessage("Payment verification completed");
+
+        return dto;
     }
 
     @Override
     public Payment processPayment(Payment payment) {
-        return null;
+        return paymentRepository.save(payment);
     }
 }
