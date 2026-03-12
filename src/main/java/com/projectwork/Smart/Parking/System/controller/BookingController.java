@@ -7,6 +7,7 @@ import com.projectwork.Smart.Parking.System.service.BookingService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,5 +38,14 @@ public class BookingController {
         String email = authentication.getName();
         List<BookingResponseDto> bookings = bookingService.getMyBookings(email);
         return ResponseEntity.ok(new ApiResponse("My bookings fetched successfully!", bookings));
+    }
+
+    @GetMapping("/debug-user")
+    @PreAuthorize("permitAll()")   // ← add this line
+    public String debugUser(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return "No user logged in (anonymous)";
+        }
+        return "Logged in as: " + auth.getName();
     }
 }

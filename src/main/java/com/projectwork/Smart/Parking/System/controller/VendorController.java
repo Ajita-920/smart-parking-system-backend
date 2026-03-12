@@ -7,11 +7,14 @@ import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
 import com.projectwork.Smart.Parking.System.entity.User;
 import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,12 +34,16 @@ public class VendorController {
     // ADD NEW PARKING LOCATION ====================
     @PostMapping("/parking")
     public ResponseEntity<ApiResponse> addParkingLocation(
-            @RequestBody ParkingLocationRequestDto request,
+            @Valid @RequestBody ParkingLocationRequestDto request,
             Authentication authentication) {
 
         String email = authentication.getName();
         User vendor = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Vendor not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
+
+        if (request.getTotalSlots() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Total slots must be positive");
+        }
 
         ParkingLocation parking = new ParkingLocation();
         parking.setName(request.getName());
@@ -44,14 +51,12 @@ public class VendorController {
         parking.setLatitude(request.getLatitude());
         parking.setLongitude(request.getLongitude());
         parking.setTotalSlots(request.getTotalSlots());
-        parking.setAvailableSlots(request.getTotalSlots());  // initially same
+        parking.setAvailableSlots(request.getTotalSlots());
         parking.setVendor(vendor);
 
         ParkingLocation saved = parkingLocationRepository.save(parking);
 
-        ParkingLocationResponseDto responseDto = mapToResponse(saved);
-
-        return ResponseEntity.ok(new ApiResponse("Parking location added successfully!", responseDto));
+        return ResponseEntity.ok(new ApiResponse("Parking location added successfully!", mapToResponse(saved)));
     }
 
     // GET MY PARKING LOCATIONS
