@@ -26,6 +26,10 @@ public class Booking {
     @ManyToOne
     private ParkingSlot slot;
 
+    @ManyToOne
+    private User driver;
+
+
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String status;
