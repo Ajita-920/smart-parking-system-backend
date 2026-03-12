@@ -11,4 +11,6 @@ public interface PaymentService {
         PaymentResponseDto verifyKhaltiPayment(String pidx);
 
         Payment processPayment(Payment payment);
+
+    Payment getPaymentById(Long id);
 }

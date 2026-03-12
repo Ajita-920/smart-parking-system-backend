@@ -129,4 +129,9 @@ public class PaymentServiceImpl implements PaymentService {
     public Payment processPayment(Payment payment) {
         return paymentRepository.save(payment);
     }
+
+    @Override
+    public Payment getPaymentById(Long id) {
+        return null;
+    }
 }

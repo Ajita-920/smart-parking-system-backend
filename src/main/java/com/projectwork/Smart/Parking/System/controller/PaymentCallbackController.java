@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 
 @RestController
-@RequestMapping("/api/payment/esewa")
+@RequestMapping("/api/payment/khalti")
 @CrossOrigin(origins = "*")
 public class PaymentCallbackController {
 
@@ -37,7 +37,7 @@ public class PaymentCallbackController {
                 "Transaction ID: " + oid + " | Amount: Rs. " + amt));
     }
 
-    // ==================== ESEWA FAILURE CALLBACK ====================
+    //FAILURE CALLBACK
     @GetMapping("/failure")
     public ResponseEntity<ApiResponse> paymentFailure(
             @RequestParam String oid,
