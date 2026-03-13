@@ -26,7 +26,7 @@ public class Payment {
 
     private String transactionId;
 
-    private String paymentMethod;    // ESEWA or CASH
+    private String paymentMethod;    // khalti or CASH
 
     private LocalDateTime paidAt;
 

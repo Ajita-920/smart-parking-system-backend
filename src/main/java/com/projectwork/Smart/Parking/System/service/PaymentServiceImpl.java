@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -27,12 +27,18 @@ public class PaymentServiceImpl implements PaymentService {
     @Autowired
     private PaymentRepository paymentRepository;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestClient restClient = RestClient.create();
 
     private static final String KHALTI_INITIATE_URL =
             "https://dev.khalti.com/api/v2/epayment/initiate/";
 
-    private static final String KHALTI_SECRET_KEY = "test_secret_key_xxxxx";
+    private static final String KHALTI_VERIFY_URL =
+            "https://dev.khalti.com/api/v2/epayment/lookup/";
+
+    private static final String KHALTI_SECRET_KEY =
+            "test_secret_key_xxxxxxxxxxxxxx";
+
+    // payment initiation
 
     @Override
     @Transactional
@@ -52,11 +58,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
 
-        // ---------- KHALTI API REQUEST ----------
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization","Key " + KHALTI_SECRET_KEY);
+        // request body
 
         Map<String,Object> body = new HashMap<>();
         body.put("return_url","http://localhost:8080/api/payment/khalti/verify");
@@ -65,21 +67,16 @@ public class PaymentServiceImpl implements PaymentService {
         body.put("purchase_order_id",savedPayment.getTransactionId());
         body.put("purchase_order_name","Parking Booking");
 
-        HttpEntity<Map<String,Object>> entity = new HttpEntity<>(body,headers);
+        Map response = restClient.post()
+                .uri(KHALTI_INITIATE_URL)
+                .header("Authorization","Key " + KHALTI_SECRET_KEY)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(Map.class);
 
-        ResponseEntity<Map> response = restTemplate.exchange(
-                KHALTI_INITIATE_URL,
-                HttpMethod.POST,
-                entity,
-                Map.class
-        );
-
-        Map<String,Object> khaltiResponse = response.getBody();
-
-        String paymentUrl = (String) khaltiResponse.get("payment_url");
-        String pidx = (String) khaltiResponse.get("pidx");
-
-        // ---------- RESPONSE ----------
+        String paymentUrl = (String) response.get("payment_url");
+        String pidx = (String) response.get("pidx");
 
         PaymentResponseDto dto = new PaymentResponseDto();
         dto.setPaymentId(savedPayment.getId());
@@ -95,35 +92,32 @@ public class PaymentServiceImpl implements PaymentService {
         return dto;
     }
 
+    // verify
+
     @Override
     public PaymentResponseDto verifyKhaltiPayment(String pidx) {
-
-        String verifyUrl = "https://dev.khalti.com/api/v2/epayment/lookup/";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization","Key " + KHALTI_SECRET_KEY);
 
         Map<String,String> body = new HashMap<>();
         body.put("pidx",pidx);
 
-        HttpEntity<Map<String,String>> entity = new HttpEntity<>(body,headers);
+        Map response = restClient.post()
+                .uri(KHALTI_VERIFY_URL)
+                .header("Authorization","Key " + KHALTI_SECRET_KEY)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(Map.class);
 
-        ResponseEntity<Map> response = restTemplate.exchange(
-                verifyUrl,
-                HttpMethod.POST,
-                entity,
-                Map.class
-        );
-
-        Map<String,Object> result = response.getBody();
+        String status = (String) response.get("status");
 
         PaymentResponseDto dto = new PaymentResponseDto();
-        dto.setStatus((String) result.get("status"));
+        dto.setStatus(status);
         dto.setMessage("Payment verification completed");
 
         return dto;
     }
+
+    // save
 
     @Override
     public Payment processPayment(Payment payment) {
