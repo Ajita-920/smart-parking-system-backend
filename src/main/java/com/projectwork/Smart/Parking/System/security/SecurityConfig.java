@@ -40,9 +40,9 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/slots/**", "/api/parking/slots", "/api/parking/nearby").authenticated()  // anyone
-                        .requestMatchers("/api/vendor/**").hasAuthority("ROLE_VENDOR")         // stricter for vendor actions
-                        .anyRequest().authenticated()
+                       // .requestMatchers("/api/slots/**", "/api/parking/slots", "/api/parking/nearby").authenticated()  // anyone
+                       .requestMatchers("/api/vendor/**").hasAuthority("ROLE_VENDOR")         // stricter for vendor actions
+                        .anyRequest().permitAll()
                 )
 
                 .sessionManagement(session ->

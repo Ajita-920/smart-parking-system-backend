@@ -7,7 +7,9 @@ import com.projectwork.Smart.Parking.System.entity.Payment;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,24 +21,22 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
-    @Autowired
-    private BookingRepository bookingRepository;
-
-    @Autowired
-    private PaymentRepository paymentRepository;
+    private final BookingRepository bookingRepository;
+    private final PaymentRepository paymentRepository;
 
     private final RestClient restClient = RestClient.create();
 
-    private static final String KHALTI_INITIATE_URL =
-            "https://dev.khalti.com/api/v2/epayment/initiate/";
+    @Value("${KHALTI_INITIATE_URL}")
+    private String KHALTI_INITIATE_URL;
 
-    private static final String KHALTI_VERIFY_URL =
-            "https://dev.khalti.com/api/v2/epayment/lookup/";
+    @Value("${KHALTI_VERIFY_URL}")
+    private String KHALTI_VERIFY_URL;
 
-    private static final String KHALTI_SECRET_KEY =
-            "test_secret_key_xxxxxxxxxxxxxx";
+    @Value("${KHALTI_SECRET_KEY}")
+    private String KHALTI_SECRET_KEY;
 
     // payment initiation
 
@@ -69,7 +69,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         Map response = restClient.post()
                 .uri(KHALTI_INITIATE_URL)
-                .header("Authorization","Key " + KHALTI_SECRET_KEY)
+                .header("Authorization",KHALTI_SECRET_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
