@@ -18,17 +18,18 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
-    // ==================== REGISTER ====================
+    // register
     @PostMapping("/register")
     public ResponseEntity<ApiResponse> register(
             @Valid @RequestBody RegisterRequestDto request) {
 
-        AuthResponseDto response = authService.registerUser(request);
+
+        String response =authService.registerUser(request);
 
         return ResponseEntity.ok(new ApiResponse("User registered successfully!", response));
     }
 
-    // ==================== LOGIN ====================
+    // login
     @PostMapping("/login")
     public ResponseEntity<ApiResponse> login(
             @Valid @RequestBody LoginRequestDto request) {

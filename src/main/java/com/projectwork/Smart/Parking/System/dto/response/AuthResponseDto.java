@@ -9,7 +9,6 @@ public class AuthResponseDto {
 
     private String token;
     private String type = "Bearer";
-
     private Long userId;
     private String name;
     private String email;
