@@ -5,6 +5,7 @@ import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
 import com.projectwork.Smart.Parking.System.service.BookingService;
 import jakarta.validation.Valid;
+import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
@@ -17,13 +18,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/booking")
 @CrossOrigin(origins = "*")
-public class BookingController {
-
+public class BookingController extends BaseController {
+ 
     @Autowired
     private BookingService bookingService;
 
     @PostMapping("/create")
-    public ResponseEntity<ApiResponse> createBooking(
+    public ResponseEntity<ApiResponse<BookingResponseDto>> createBooking(
             @Valid @RequestBody BookingRequestDto request,
             Authentication authentication) {   // Gets logged-in user
 
@@ -31,22 +32,22 @@ public class BookingController {
 
         BookingResponseDto response = bookingService.createBooking(request, userEmail);
 
-        return ResponseEntity.ok(new ApiResponse("Booking successful!", response));
+        return okResponse("Booking successful!", response);
     }
 
-    @GetMapping("/my")
-    public ResponseEntity<ApiResponse> getMyBookings(Authentication authentication) {
+    @GetMapping("/mybookings")
+    public ResponseEntity<ApiResponse<List<BookingResponseDto>>> getMyBookings(Authentication authentication) {
         String email = authentication.getName();
         List<BookingResponseDto> bookings = bookingService.getMyBookings(email);
-        return ResponseEntity.ok(new ApiResponse("My bookings fetched successfully!", bookings));
+        return okResponse("My bookings fetched successfully!", bookings);
     }
 
     @GetMapping("/debug-user")
     @PreAuthorize("permitAll()")   // ← add this line
-    public String debugUser(Authentication auth) {
+    public ResponseEntity<ApiResponse<String>> debugUser(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) {
-            return "No user logged in (anonymous)";
+            return okResponse("No user logged in (anonymous)", null);
         }
-        return "Logged in as: " + auth.getName();
+        return okResponse(" Logged in user details: ", auth.getName());
     }
 }

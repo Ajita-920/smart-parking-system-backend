@@ -1,6 +1,8 @@
 package com.projectwork.Smart.Parking.System.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,7 +32,10 @@ public class Booking {
     private User driver;
 
 
+    @FutureOrPresent
     private LocalDateTime startTime;
+
+    @Future
     private LocalDateTime endTime;
     private String status;
 

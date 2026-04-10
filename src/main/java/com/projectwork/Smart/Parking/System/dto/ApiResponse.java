@@ -1,16 +1,22 @@
 package com.projectwork.Smart.Parking.System.dto;
 
 import lombok.Data;
+import lombok.ToString;
+
+import java.time.LocalDateTime;
 
 @Data
-public class ApiResponse {
-    private boolean success;
-    private String message;
-    private Object data;
+@ToString
+public class ApiResponse<T> {
+    private int responseCode;
+    private String responseMessage;
+    private LocalDateTime timestamp;
+    private T data;
 
-    public ApiResponse(String message, Object data) {
-        this.success = true;
-        this.message = message;
+    public ApiResponse(int responseCode, String responseMessage, LocalDateTime timestamp, T data) {
+        this.responseCode = responseCode;
+        this.responseMessage = responseMessage;
+        this.timestamp = timestamp;
         this.data = data;
     }
 }

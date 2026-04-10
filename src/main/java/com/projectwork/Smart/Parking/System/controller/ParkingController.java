@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/parking")
 @CrossOrigin(origins = "*")
-public class ParkingController {
+public class ParkingController extends BaseController{
 
     private final DijkstraService dijkstraService;
     private final ParkingLocationRepository parkingLocationRepository;
@@ -26,50 +26,44 @@ public class ParkingController {
     }
 
  //closest parking
-    @GetMapping("/thamel-nearby")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse> findClosestInThamel(
-            @RequestParam double latitude,
-            @RequestParam double longitude,
-            @RequestParam(defaultValue = "5") int maxSpots) {
+ @GetMapping("/thamel-nearby")
+ @PreAuthorize("isAuthenticated()")
+ public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findClosestInThamel(
+         @RequestParam double latitude,
+         @RequestParam double longitude,
+         @RequestParam(defaultValue = "5") int maxSpots) {
 
-        List<ParkingLocationResponseDto> spots =
-                dijkstraService.findClosestInThamel(latitude, longitude, maxSpots);
+     List<ParkingLocationResponseDto> spots =
+             dijkstraService.findClosestInThamel(latitude, longitude, maxSpots);
 
-        if (spots.isEmpty()) {
-            return ResponseEntity.ok(new ApiResponse("No parking spots available in Thamel.", null));
-        }
+     if (spots.isEmpty()) {
+         return okResponse("No parking spots available in Thamel.", null);
+     }
 
-        return ResponseEntity.ok(new ApiResponse(
-                "Found " + spots.size() + " parking spots in Thamel sorted by road distance",
-                spots
-        ));
-    }
+     return okResponse("Found " + spots.size() + " parking spots in Thamel sorted by road distance",spots);
+ }
 
   //near one
-    @GetMapping("/nearby")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse> findNearestInThamel(
-            @RequestParam double latitude,
-            @RequestParam double longitude) {
+  @GetMapping("/nearby")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> findNearestInThamel(
+          @RequestParam double latitude,
+          @RequestParam double longitude) {
 
-        ParkingLocationResponseDto nearest = dijkstraService.findNearestParking(latitude, longitude);
+      ParkingLocationResponseDto nearest = dijkstraService.findNearestParking(latitude, longitude);
 
-        if (nearest == null) {
-            return ResponseEntity.ok(new ApiResponse("No parking spots available in Thamel.", null));
-        }
+      if (nearest == null) {
+          return okResponse("No parking spots available in Thamel.", null);
+      }
 
-        return ResponseEntity.ok(new ApiResponse(
-                "Nearest parking in Thamel found successfully!",
-                nearest
-        ));
-    }
+      return okResponse( "Nearest parking in Thamel found successfully!", nearest);
+  }
 
 
 //sabbai
     @GetMapping("/slots")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse> getAllInThamel() {
+    public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getAllInThamel() {
         List<ParkingLocation> locations = parkingLocationRepository.findByAvailableSlotsGreaterThan(0);
 
         List<ParkingLocationResponseDto> dtos = locations.stream()
@@ -78,10 +72,10 @@ public class ParkingController {
                 .collect(Collectors.toList());
 
         if (dtos.isEmpty()) {
-            return ResponseEntity.ok(new ApiResponse("No available parking in Thamel.", null));
+            return okResponse("No available parking in Thamel.", null);
         }
 
-        return ResponseEntity.ok(new ApiResponse("All available parking in Thamel", dtos));
+        return okResponse("All available parking in Thamel", dtos);
     }
 
   //dto
