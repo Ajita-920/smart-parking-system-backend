@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -77,8 +78,8 @@ public class VendorController extends BaseController {
     }
 
     // ==================== UPDATE AVAILABLE SLOTS ====================
-    @PutMapping("/updateparking/{id}/slots")
-    public ResponseEntity<ApiResponse<ParkingSlotResponseDto>> updateAvailableSlots(
+    @PutMapping("/updateparking/{id}")
+    public ResponseEntity<?> updateAvailableSlots(
             @PathVariable Long id,
             @RequestParam int newAvailableSlots,
             Authentication authentication) {
@@ -93,9 +94,9 @@ public class VendorController extends BaseController {
         }
 
         parking.setAvailableSlots(newAvailableSlots);
-        parkingLocationRepository.save(parking);
+       parkingLocationRepository.save(parking);
 
-        return okResponse("Available slots updated successfully!", null);
+        return okResponse("Available slots updated successfully!", new HashMap<>());
     }
 
     // Helper method
