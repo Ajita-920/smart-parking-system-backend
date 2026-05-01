@@ -18,11 +18,14 @@ RUN mvn clean package -DskipTests
 # ---------- Development Stage ----------
 FROM base AS development
 
-RUN apt-get update && apt-get install -y inotify-tools
+# Spring DevTools uses its own polling-based restart — no OS-level inotify needed.
+# This works identically on macOS, Linux, and Windows Docker Desktop.
+ENV SPRING_DEVTOOLS_RESTART_POLL_INTERVAL=2000 \
+    SPRING_DEVTOOLS_RESTART_QUIET_PERIOD=1000
 
 EXPOSE 8080
 
-CMD ["mvn", "spring-boot:run"]
+CMD ["mvn", "spring-boot:run", "-Dspring-boot.run.jvmArguments=-Dspring.devtools.remote.secret=secret"]
 
 
 # ---------- Production Stage ----------

@@ -10,7 +10,7 @@ services:
       - "8080:8080"
     volumes:
       - .:/app
-      - ~/.m2:/root/.m2
+      - m2_cache:/root/.m2
     env_file: .env.backend
     depends_on:
       db:
@@ -45,6 +45,7 @@ services:
 
 volumes:
   pgdata:
+  m2_cache:
 
 networks:
   smart-parking-dev-network:
