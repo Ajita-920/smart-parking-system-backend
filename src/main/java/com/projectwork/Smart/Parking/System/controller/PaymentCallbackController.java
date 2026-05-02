@@ -11,20 +11,16 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/payment/khalti")
 @CrossOrigin(origins = "*")
-public class PaymentCallbackController {
+public class PaymentCallbackController extends BaseController {
 
     @Autowired
     private PaymentService paymentService;
 
 
     @GetMapping("/verify")
-    public ResponseEntity<ApiResponse> verifyPayment(
+    public ResponseEntity<ApiResponse<PaymentResponseDto>> verifyPayment(
             @RequestParam String pidx) {
-
         PaymentResponseDto response = paymentService.verifyKhaltiPayment(pidx);
-
-        return ResponseEntity.ok(
-                new ApiResponse("Payment verification completed", response)
-        );
+        return okResponse("Payment verification completed", response);
     }
 }

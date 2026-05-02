@@ -3,6 +3,7 @@ package com.projectwork.Smart.Parking.System.controller;
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
+import com.projectwork.Smart.Parking.System.dto.response.ParkingSlotResponseDto;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
 import com.projectwork.Smart.Parking.System.entity.User;
 import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
@@ -16,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,7 +25,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/vendor")
 @CrossOrigin(origins = "*")
 @PreAuthorize("hasRole('VENDOR')")   // Only VENDOR role can access these endpoints
-public class VendorController {
+public class VendorController extends BaseController {
 
     @Autowired
     private ParkingLocationRepository parkingLocationRepository;
@@ -32,8 +34,8 @@ public class VendorController {
     private UserRepository userRepository;
 
     // ADD NEW PARKING LOCATION ====================
-    @PostMapping("/parking")
-    public ResponseEntity<ApiResponse> addParkingLocation(
+    @PostMapping("/addparking")
+    public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> addParkingLocation(
             @Valid @RequestBody ParkingLocationRequestDto request,
             Authentication authentication) {
 
@@ -56,12 +58,12 @@ public class VendorController {
 
         ParkingLocation saved = parkingLocationRepository.save(parking);
 
-        return ResponseEntity.ok(new ApiResponse("Parking location added successfully!", mapToResponse(saved)));
+        return okResponse("Parking location added successfully!", mapToResponse(saved));
     }
 
     // GET MY PARKING LOCATIONS
-    @GetMapping("/parking/my")
-    public ResponseEntity<ApiResponse> getMyParkingLocations(Authentication authentication) {
+    @GetMapping("/myparkinglocation")
+    public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getMyParkingLocations(Authentication authentication) {
         String email = authentication.getName();
         User vendor = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Vendor not found"));
@@ -72,12 +74,12 @@ public class VendorController {
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(new ApiResponse("My parking locations fetched!", responseList));
+        return okResponse("My parking locations fetched!", responseList);
     }
 
     // ==================== UPDATE AVAILABLE SLOTS ====================
-    @PutMapping("/parking/{id}/slots")
-    public ResponseEntity<ApiResponse> updateAvailableSlots(
+    @PutMapping("/updateparking/{id}")
+    public ResponseEntity<?> updateAvailableSlots(
             @PathVariable Long id,
             @RequestParam int newAvailableSlots,
             Authentication authentication) {
@@ -92,9 +94,9 @@ public class VendorController {
         }
 
         parking.setAvailableSlots(newAvailableSlots);
-        parkingLocationRepository.save(parking);
+       parkingLocationRepository.save(parking);
 
-        return ResponseEntity.ok(new ApiResponse("Available slots updated successfully!", null));
+        return okResponse("Available slots updated successfully!", new HashMap<>());
     }
 
     // Helper method

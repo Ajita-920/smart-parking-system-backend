@@ -18,7 +18,7 @@ import java.util.Map;
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('ADMIN')")
 @CrossOrigin(origins = "*")
-public class AdminController {
+public class AdminController extends BaseController{
 
     @Autowired
     private BookingRepository bookingRepository;
@@ -28,27 +28,27 @@ public class AdminController {
 
     // View all bookings
     @GetMapping("/bookings")
-    public ResponseEntity<ApiResponse> getAllBookings() {
+    public ResponseEntity<ApiResponse<List<Booking>>> getAllBookings() {
         List<Booking> bookings = bookingRepository.findAll();
-        return ResponseEntity.ok(new ApiResponse("All bookings retrieved", bookings));
+        return okResponse("All bookings retrieved", bookings);
     }
 
     // View all vendors
     @GetMapping("/vendors")
-    public ResponseEntity<ApiResponse> getAllVendors() {
+    public ResponseEntity<ApiResponse<List<User>>> getAllVendors() {
         List<User> vendors = userRepository.findByRole("VENDOR");
-        return ResponseEntity.ok(new ApiResponse("All vendors retrieved", vendors));
+        return okResponse("All vendors retrieved", vendors);
     }
 
     // View all drivers
     @GetMapping("/drivers")
-    public ResponseEntity<ApiResponse> getAllDrivers() {
+    public ResponseEntity<ApiResponse<List<User>>> getAllDrivers() {
         List<User> drivers = userRepository.findByRole("DRIVER");
-        return ResponseEntity.ok(new ApiResponse("All drivers retrieved", drivers));
+        return okResponse("All drivers retrieved", drivers);
     }
 
     @GetMapping("/dashboard")
-    public ResponseEntity<ApiResponse> getDashboard() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboard() {
         long totalBookings = bookingRepository.count();
         long totalVendors = userRepository.countByRole("VENDOR");
         long totalDrivers = userRepository.countByRole("DRIVER");
@@ -58,6 +58,6 @@ public class AdminController {
         stats.put("totalVendors", totalVendors);
         stats.put("totalDrivers", totalDrivers);
 
-        return ResponseEntity.ok(new ApiResponse("Admin Dashboard", stats));
+        return okResponse("Admin Dashboard", stats);
     }
 }

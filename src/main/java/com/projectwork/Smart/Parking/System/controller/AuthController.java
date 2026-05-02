@@ -13,29 +13,26 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")   // Allow React frontend to connect
-public class AuthController {
+public class AuthController extends BaseController {
 
     @Autowired
     private AuthService authService;
 
     // register
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse> register(
+    public ResponseEntity<ApiResponse<AuthResponseDto>> register(
             @Valid @RequestBody RegisterRequestDto request) {
-
-
-        String response =authService.registerUser(request);
-
-        return ResponseEntity.ok(new ApiResponse("User registered successfully!", response));
+        AuthResponseDto response =authService.registerUser(request);
+        return okResponse("User registered successfully!", response);
     }
 
     // login
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse> login(
+    public ResponseEntity<ApiResponse<AuthResponseDto>> login(
             @Valid @RequestBody LoginRequestDto request) {
 
         AuthResponseDto response = authService.loginUser(request);
 
-        return ResponseEntity.ok(new ApiResponse("Login successful!", response));
+        return okResponse("Login successful!", response);
     }
 }

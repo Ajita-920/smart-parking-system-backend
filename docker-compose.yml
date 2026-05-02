@@ -1,0 +1,70 @@
+version: "3.9"
+
+# ─── PRODUCTION Compose ──────────────────────────────────────────────────────
+# Usage: docker compose -f docker-compose.prod.yml up --build
+#
+# Features:
+#  - Frontend: nginx serving the built Vite bundle (port 80), proxies /api to backend
+#  - Backend:  lean JRE-only image running the fat JAR
+#  - Postgres: persistent volume, health-checked
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smart-parking-db
+    environment:
+      POSTGRES_DB: smart_parking
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ajita12
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d smart_parking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./smart-parking-system-backend
+      dockerfile: Dockerfile.prod
+    container_name: smart-parking-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smart_parking
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ajita12
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./smart-parking-frontend
+      dockerfile: Dockerfile.prod
+    container_name: smart-parking-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+
+networks:
+  app-network:
+    driver: bridge

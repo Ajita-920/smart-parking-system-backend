@@ -12,19 +12,16 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/payment")
 @CrossOrigin(origins = "*")
-public class PaymentController {
+public class PaymentController extends BaseController{
 
     @Autowired
     private PaymentService paymentService;
 
     @PostMapping("/khalti/initiate")
-    public ResponseEntity<ApiResponse> initiateKhaltiPayment(
+    public ResponseEntity<ApiResponse<PaymentResponseDto>> initiateKhaltiPayment(
             @RequestBody PaymentRequestDto request) {
 
         PaymentResponseDto response = paymentService.initiateKhaltiPayment(request);
-
-        return ResponseEntity.ok(
-                new ApiResponse("Khalti payment initiated successfully", response)
-        );
+        return okResponse("Khalti payment initiated successfully", response);
     }
 }

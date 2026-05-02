@@ -5,7 +5,7 @@ import com.projectwork.Smart.Parking.System.dto.request.RegisterRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.AuthResponseDto;
 
 public interface AuthService {
-    String registerUser(RegisterRequestDto request);
+    AuthResponseDto registerUser(RegisterRequestDto request);
 
     AuthResponseDto loginUser(LoginRequestDto request);
 }

@@ -41,7 +41,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                        // .requestMatchers("/api/slots/**", "/api/parking/slots", "/api/parking/nearby").authenticated()  // anyone
-                       .requestMatchers("/api/vendor/**").hasAuthority("ROLE_VENDOR")         // stricter for vendor actions
+                       .requestMatchers("/api/vendor/**").hasRole("VENDOR")         // stricter for vendor actions
                         .anyRequest().permitAll()
                 )
 
@@ -60,8 +60,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "http://localhost:4200",
-                "*"   // ← temporary for testing; restrict in production
+                "http://localhost:4200"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
