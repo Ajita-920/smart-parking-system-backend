@@ -26,7 +26,7 @@ public class ParkingController extends BaseController{
     }
 
  //closest parking
- @GetMapping("/thamel-nearby")
+ @GetMapping({"/areas/thamel/nearby", "/thamel-nearby"})
  @PreAuthorize("isAuthenticated()")
  public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findClosestInThamel(
          @RequestParam double latitude,
@@ -44,7 +44,7 @@ public class ParkingController extends BaseController{
  }
 
   //near one
-  @GetMapping("/nearby")
+  @GetMapping({"/areas/thamel/nearest", "/nearby"})
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> findNearestInThamel(
           @RequestParam double latitude,
@@ -61,7 +61,7 @@ public class ParkingController extends BaseController{
 
 
 //sabbai
-    @GetMapping("/slots")
+    @GetMapping({"/areas/thamel/available-slots", "/slots"})
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getAllInThamel() {
         List<ParkingLocation> locations = parkingLocationRepository.findByAvailableSlotsGreaterThan(0);

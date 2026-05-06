@@ -18,6 +18,13 @@ public class AuthController extends BaseController {
     @Autowired
     private AuthService authService;
 
+
+//    @GetMapping("/hi")
+//    public ResponseEntity<ApiResponse<String>> hello(){
+//       String res= "Hello";
+//        return okResponse("hiiiii", res);
+//
+//    }
     // register
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponseDto>> register(

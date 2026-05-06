@@ -3,7 +3,7 @@ package com.projectwork.Smart.Parking.System.controller;
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
-import com.projectwork.Smart.Parking.System.dto.response.ParkingSlotResponseDto;
+import com.projectwork.Smart.Parking.System.dto.response.VendorDashboardResponseDto;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
 import com.projectwork.Smart.Parking.System.entity.User;
 import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
@@ -19,10 +19,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/vendor")
+@RequestMapping({"/api/vendor", "/api/vendors"})
 @CrossOrigin(origins = "*")
 @PreAuthorize("hasRole('VENDOR')")   // Only VENDOR role can access these endpoints
 public class VendorController extends BaseController {
@@ -34,7 +35,7 @@ public class VendorController extends BaseController {
     private UserRepository userRepository;
 
     // ADD NEW PARKING LOCATION ====================
-    @PostMapping("/addparking")
+    @PostMapping({"/parking-locations", "/addparking"})
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> addParkingLocation(
             @Valid @RequestBody ParkingLocationRequestDto request,
             Authentication authentication) {
@@ -62,7 +63,7 @@ public class VendorController extends BaseController {
     }
 
     // GET MY PARKING LOCATIONS
-    @GetMapping("/myparkinglocation")
+    @GetMapping({"/parking-locations", "/myparkinglocation"})
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getMyParkingLocations(Authentication authentication) {
         String email = authentication.getName();
         User vendor = userRepository.findByEmail(email)
@@ -78,10 +79,11 @@ public class VendorController extends BaseController {
     }
 
     // ==================== UPDATE AVAILABLE SLOTS ====================
-    @PutMapping("/updateparking/{id}")
+    @PutMapping({"/parking-locations/{id}/available-slots", "/updateparking/{id}"})
     public ResponseEntity<?> updateAvailableSlots(
             @PathVariable Long id,
-            @RequestParam int newAvailableSlots,
+            @RequestParam(required = false) Integer availableSlots,
+            @RequestParam(required = false, name = "newAvailableSlots") Integer legacyAvailableSlots,
             Authentication authentication) {
 
         ParkingLocation parking = parkingLocationRepository.findById(id)
@@ -93,10 +95,74 @@ public class VendorController extends BaseController {
             throw new RuntimeException("You can only update your own parking!");
         }
 
-        parking.setAvailableSlots(newAvailableSlots);
-       parkingLocationRepository.save(parking);
+        Integer nextAvailableSlots = availableSlots != null ? availableSlots : legacyAvailableSlots;
+        if (nextAvailableSlots == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "availableSlots is required");
+        }
+        if (nextAvailableSlots < 0 || nextAvailableSlots > parking.getTotalSlots()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "availableSlots must be between 0 and total slots");
+        }
+
+        parking.setAvailableSlots(nextAvailableSlots);
+        parkingLocationRepository.save(parking);
 
         return okResponse("Available slots updated successfully!", new HashMap<>());
+    }
+
+    @GetMapping({"/dashboard", "/dashboard/summary"})
+    public ResponseEntity<ApiResponse<VendorDashboardResponseDto>> getVendorDashboard(Authentication authentication) {
+        String email = authentication.getName();
+        User vendor = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Vendor not found"));
+
+        List<ParkingLocation> parkings = parkingLocationRepository.findByVendor(vendor);
+        VendorDashboardResponseDto dashboard = new VendorDashboardResponseDto();
+        dashboard.setTotalParkingLocations(parkings.size());
+
+        List<VendorDashboardResponseDto.LocationSlotSummary> locationSummaries = new ArrayList<>();
+        for (ParkingLocation parking : parkings) {
+            SlotBreakdown split = splitSlots(parking.getTotalSlots(), parking.getAvailableSlots());
+
+            VendorDashboardResponseDto.LocationSlotSummary locationSummary =
+                    new VendorDashboardResponseDto.LocationSlotSummary();
+            locationSummary.setId(parking.getId());
+            locationSummary.setName(parking.getName());
+            locationSummary.setTotalSlots(parking.getTotalSlots());
+            locationSummary.setAvailableSlots(split.availableSlots);
+            locationSummary.setOccupiedSlots(split.occupiedSlots);
+
+            locationSummary.getTwoWheelerSlots().setTotal(split.twoWheelerTotalSlots);
+            locationSummary.getTwoWheelerSlots().setAvailable(split.twoWheelerAvailableSlots);
+            locationSummary.getTwoWheelerSlots().setOccupied(split.twoWheelerOccupiedSlots);
+
+            locationSummary.getFourWheelerSlots().setTotal(split.fourWheelerTotalSlots);
+            locationSummary.getFourWheelerSlots().setAvailable(split.fourWheelerAvailableSlots);
+            locationSummary.getFourWheelerSlots().setOccupied(split.fourWheelerOccupiedSlots);
+
+            locationSummaries.add(locationSummary);
+
+            dashboard.setTotalSlots(dashboard.getTotalSlots() + split.totalSlots);
+            dashboard.setAvailableSlots(dashboard.getAvailableSlots() + split.availableSlots);
+            dashboard.setOccupiedSlots(dashboard.getOccupiedSlots() + split.occupiedSlots);
+
+            dashboard.getTwoWheelerSlots().setTotal(
+                    dashboard.getTwoWheelerSlots().getTotal() + split.twoWheelerTotalSlots);
+            dashboard.getTwoWheelerSlots().setAvailable(
+                    dashboard.getTwoWheelerSlots().getAvailable() + split.twoWheelerAvailableSlots);
+            dashboard.getTwoWheelerSlots().setOccupied(
+                    dashboard.getTwoWheelerSlots().getOccupied() + split.twoWheelerOccupiedSlots);
+
+            dashboard.getFourWheelerSlots().setTotal(
+                    dashboard.getFourWheelerSlots().getTotal() + split.fourWheelerTotalSlots);
+            dashboard.getFourWheelerSlots().setAvailable(
+                    dashboard.getFourWheelerSlots().getAvailable() + split.fourWheelerAvailableSlots);
+            dashboard.getFourWheelerSlots().setOccupied(
+                    dashboard.getFourWheelerSlots().getOccupied() + split.fourWheelerOccupiedSlots);
+        }
+
+        dashboard.setLocations(locationSummaries);
+        return okResponse("Vendor dashboard fetched successfully!", dashboard);
     }
 
     // Helper method
@@ -110,5 +176,42 @@ public class VendorController extends BaseController {
         dto.setAvailableSlots(parking.getAvailableSlots());
         dto.setVendorName(parking.getVendor().getName());
         return dto;
+    }
+
+    private SlotBreakdown splitSlots(int totalSlots, int availableSlots) {
+        int safeTotalSlots = Math.max(totalSlots, 0);
+        int safeAvailableSlots = Math.min(Math.max(availableSlots, 0), safeTotalSlots);
+
+        int fourWheelerTotalSlots = safeTotalSlots / 2;
+        int twoWheelerTotalSlots = safeTotalSlots - fourWheelerTotalSlots;
+
+        int fourWheelerAvailableSlots = safeTotalSlots == 0
+                ? 0
+                : (int) Math.floor((double) safeAvailableSlots * fourWheelerTotalSlots / safeTotalSlots);
+        int twoWheelerAvailableSlots = safeAvailableSlots - fourWheelerAvailableSlots;
+
+        return new SlotBreakdown(
+                safeTotalSlots,
+                safeAvailableSlots,
+                safeTotalSlots - safeAvailableSlots,
+                twoWheelerTotalSlots,
+                twoWheelerAvailableSlots,
+                twoWheelerTotalSlots - twoWheelerAvailableSlots,
+                fourWheelerTotalSlots,
+                fourWheelerAvailableSlots,
+                fourWheelerTotalSlots - fourWheelerAvailableSlots
+        );
+    }
+
+    private record SlotBreakdown(
+            int totalSlots,
+            int availableSlots,
+            int occupiedSlots,
+            int twoWheelerTotalSlots,
+            int twoWheelerAvailableSlots,
+            int twoWheelerOccupiedSlots,
+            int fourWheelerTotalSlots,
+            int fourWheelerAvailableSlots,
+            int fourWheelerOccupiedSlots) {
     }
 }

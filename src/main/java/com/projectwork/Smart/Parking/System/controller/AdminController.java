@@ -1,5 +1,6 @@
 package com.projectwork.Smart.Parking.System.controller;
 
+import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
 import com.projectwork.Smart.Parking.System.entity.Booking;
 import com.projectwork.Smart.Parking.System.entity.User;
@@ -20,6 +21,7 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class AdminController extends BaseController{
 
+
     @Autowired
     private BookingRepository bookingRepository;
 
@@ -27,7 +29,7 @@ public class AdminController extends BaseController{
     private UserRepository userRepository;
 
     // View all bookings
-    @GetMapping("/bookings")
+    @GetMapping(ApiConstant.BOOKINGS)
     public ResponseEntity<ApiResponse<List<Booking>>> getAllBookings() {
         List<Booking> bookings = bookingRepository.findAll();
         return okResponse("All bookings retrieved", bookings);
