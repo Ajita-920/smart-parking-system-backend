@@ -1,5 +1,6 @@
 package com.projectwork.Smart.Parking.System.controller;
 
+import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
 import com.projectwork.Smart.Parking.System.dto.response.PaymentResponseDto;
 import com.projectwork.Smart.Parking.System.service.PaymentService;
@@ -9,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/payment/khalti")
+@RequestMapping(ApiConstant.PAYMENT_KHALTI_BASE)
 @CrossOrigin(origins = "*")
 public class PaymentCallbackController extends BaseController {
 
@@ -17,7 +18,7 @@ public class PaymentCallbackController extends BaseController {
     private PaymentService paymentService;
 
 
-    @GetMapping("/verify")
+    @GetMapping(ApiConstant.PAYMENT_KHALTI_VERIFY)
     public ResponseEntity<ApiResponse<PaymentResponseDto>> verifyPayment(
             @RequestParam String pidx) {
         PaymentResponseDto response = paymentService.verifyKhaltiPayment(pidx);

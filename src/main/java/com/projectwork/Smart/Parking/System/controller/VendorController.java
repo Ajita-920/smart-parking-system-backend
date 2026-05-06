@@ -1,5 +1,6 @@
 package com.projectwork.Smart.Parking.System.controller;
 
+import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
@@ -23,7 +24,7 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping({"/api/vendor", "/api/vendors"})
+@RequestMapping({ApiConstant.VENDOR_BASE})
 @CrossOrigin(origins = "*")
 @PreAuthorize("hasRole('VENDOR')")   // Only VENDOR role can access these endpoints
 public class VendorController extends BaseController {
@@ -35,7 +36,7 @@ public class VendorController extends BaseController {
     private UserRepository userRepository;
 
     // ADD NEW PARKING LOCATION ====================
-    @PostMapping({"/parking-locations", "/addparking"})
+    @PostMapping({ApiConstant.VENDOR_ADD_PARKING_LEGACY})
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> addParkingLocation(
             @Valid @RequestBody ParkingLocationRequestDto request,
             Authentication authentication) {
@@ -63,7 +64,7 @@ public class VendorController extends BaseController {
     }
 
     // GET MY PARKING LOCATIONS
-    @GetMapping({"/parking-locations", "/myparkinglocation"})
+    @GetMapping({ApiConstant.VENDOR_PARKING_LOCATIONS})
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getMyParkingLocations(Authentication authentication) {
         String email = authentication.getName();
         User vendor = userRepository.findByEmail(email)
@@ -79,7 +80,7 @@ public class VendorController extends BaseController {
     }
 
     // ==================== UPDATE AVAILABLE SLOTS ====================
-    @PutMapping({"/parking-locations/{id}/available-slots", "/updateparking/{id}"})
+    @PutMapping({ApiConstant.VENDOR_UPDATE_PARKING_AVAILABLE_SLOTS, ApiConstant.VENDOR_UPDATE_PARKING_LEGACY})
     public ResponseEntity<?> updateAvailableSlots(
             @PathVariable Long id,
             @RequestParam(required = false) Integer availableSlots,
@@ -110,7 +111,7 @@ public class VendorController extends BaseController {
         return okResponse("Available slots updated successfully!", new HashMap<>());
     }
 
-    @GetMapping({"/dashboard", "/dashboard/summary"})
+    @GetMapping({ApiConstant.VENDOR_DASHBOARD, ApiConstant.VENDOR_DASHBOARD_SUMMARY})
     public ResponseEntity<ApiResponse<VendorDashboardResponseDto>> getVendorDashboard(Authentication authentication) {
         String email = authentication.getName();
         User vendor = userRepository.findByEmail(email)

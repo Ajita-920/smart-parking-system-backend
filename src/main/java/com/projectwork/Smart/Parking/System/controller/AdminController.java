@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping(ApiConstant.ADMIN_BASE)
 @PreAuthorize("hasRole('ADMIN')")
 @CrossOrigin(origins = "*")
 public class AdminController extends BaseController{
@@ -29,27 +29,27 @@ public class AdminController extends BaseController{
     private UserRepository userRepository;
 
     // View all bookings
-    @GetMapping(ApiConstant.BOOKINGS)
+    @GetMapping(ApiConstant.ADMIN_BOOKINGS)
     public ResponseEntity<ApiResponse<List<Booking>>> getAllBookings() {
         List<Booking> bookings = bookingRepository.findAll();
         return okResponse("All bookings retrieved", bookings);
     }
 
     // View all vendors
-    @GetMapping("/vendors")
+    @GetMapping(ApiConstant.ADMIN_VENDORS)
     public ResponseEntity<ApiResponse<List<User>>> getAllVendors() {
         List<User> vendors = userRepository.findByRole("VENDOR");
         return okResponse("All vendors retrieved", vendors);
     }
 
     // View all drivers
-    @GetMapping("/drivers")
+    @GetMapping(ApiConstant.ADMIN_DRIVERS)
     public ResponseEntity<ApiResponse<List<User>>> getAllDrivers() {
         List<User> drivers = userRepository.findByRole("DRIVER");
         return okResponse("All drivers retrieved", drivers);
     }
 
-    @GetMapping("/dashboard")
+    @GetMapping(ApiConstant.ADMIN_DASHBOARD)
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboard() {
         long totalBookings = bookingRepository.count();
         long totalVendors = userRepository.countByRole("VENDOR");

@@ -1,5 +1,6 @@
 package com.projectwork.Smart.Parking.System.controller;
 
+import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
@@ -13,7 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/parking")
+@RequestMapping(ApiConstant.PARKING_BASE)
 @CrossOrigin(origins = "*")
 public class ParkingController extends BaseController{
 
@@ -26,7 +27,7 @@ public class ParkingController extends BaseController{
     }
 
  //closest parking
- @GetMapping({"/areas/thamel/nearby", "/thamel-nearby"})
+ @GetMapping({ApiConstant.PARKING_THAMEL_NEARBY_LEGACY})
  @PreAuthorize("isAuthenticated()")
  public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findClosestInThamel(
          @RequestParam double latitude,
@@ -44,7 +45,7 @@ public class ParkingController extends BaseController{
  }
 
   //near one
-  @GetMapping({"/areas/thamel/nearest", "/nearby"})
+  @GetMapping({ApiConstant.PARKING_THAMEL_NEAREST})
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> findNearestInThamel(
           @RequestParam double latitude,
@@ -61,7 +62,7 @@ public class ParkingController extends BaseController{
 
 
 //sabbai
-    @GetMapping({"/areas/thamel/available-slots", "/slots"})
+    @GetMapping({ApiConstant.PARKING_THAMEL_AVAILABLE_SLOTS})
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getAllInThamel() {
         List<ParkingLocation> locations = parkingLocationRepository.findByAvailableSlotsGreaterThan(0);

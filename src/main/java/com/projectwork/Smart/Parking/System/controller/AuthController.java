@@ -1,5 +1,6 @@
 package com.projectwork.Smart.Parking.System.controller;
 
+import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import com.projectwork.Smart.Parking.System.dto.request.LoginRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.RegisterRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.AuthResponseDto;
@@ -11,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping(ApiConstant.AUTH_BASE)
 @CrossOrigin(origins = "*")   // Allow React frontend to connect
 public class AuthController extends BaseController {
 
@@ -26,7 +27,7 @@ public class AuthController extends BaseController {
 //
 //    }
     // register
-    @PostMapping("/register")
+    @PostMapping(ApiConstant.AUTH_REGISTER)
     public ResponseEntity<ApiResponse<AuthResponseDto>> register(
             @Valid @RequestBody RegisterRequestDto request) {
         AuthResponseDto response =authService.registerUser(request);
@@ -34,7 +35,7 @@ public class AuthController extends BaseController {
     }
 
     // login
-    @PostMapping("/login")
+    @PostMapping(ApiConstant.AUTH_LOGIN)
     public ResponseEntity<ApiResponse<AuthResponseDto>> login(
             @Valid @RequestBody LoginRequestDto request) {
 

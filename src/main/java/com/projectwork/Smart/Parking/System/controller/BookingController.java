@@ -1,5 +1,6 @@
 package com.projectwork.Smart.Parking.System.controller;
 
+import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import com.projectwork.Smart.Parking.System.dto.request.BookingRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
@@ -14,14 +15,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping({"/api/booking", "/api/bookings"})
+@RequestMapping({ApiConstant.BOOKING_BASE})
 @CrossOrigin(origins = "*")
 public class BookingController extends BaseController {
  
     @Autowired
     private BookingService bookingService;
 
-    @PostMapping({"", "/create"})
+    @PostMapping({ApiConstant.BOOKING_CREATE_LEGACY})
     public ResponseEntity<ApiResponse<BookingResponseDto>> createBooking(
             @Valid @RequestBody BookingRequestDto request,
             Authentication authentication) {   // Gets logged-in user
@@ -33,14 +34,14 @@ public class BookingController extends BaseController {
         return okResponse("Booking successful!", response);
     }
 
-    @GetMapping({"/me", "/mybookings"})
+    @GetMapping({ApiConstant.BOOKING_MY_LEGACY})
     public ResponseEntity<ApiResponse<List<BookingResponseDto>>> getMyBookings(Authentication authentication) {
         String email = authentication.getName();
         List<BookingResponseDto> bookings = bookingService.getMyBookings(email);
         return okResponse("My bookings fetched successfully!", bookings);
     }
 
-    @GetMapping({"/debug/current-user", "/debug-user"})
+    @GetMapping({ApiConstant.BOOKING_DEBUG_USER, ApiConstant.BOOKING_DEBUG_USER_LEGACY})
     @PreAuthorize("permitAll()")   // ← add this line
     public ResponseEntity<ApiResponse<String>> debugUser(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) {

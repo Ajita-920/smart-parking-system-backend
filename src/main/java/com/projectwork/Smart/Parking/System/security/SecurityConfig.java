@@ -1,11 +1,14 @@
 package com.projectwork.Smart.Parking.System.security;
 
+import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -34,12 +37,12 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/vendor/**", "/api/vendors/**").hasRole("VENDOR")
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/booking/**", "/api/bookings/**").authenticated()
-                        .requestMatchers("/api/parking/**").authenticated()
-                        .requestMatchers("/api/payment/**").authenticated()
+                        .requestMatchers(ApiConstant.AUTH_BASE + "/**").permitAll()
+                        .requestMatchers(ApiConstant.VENDOR_BASE + "/**").hasRole("VENDOR")
+                        .requestMatchers(ApiConstant.ADMIN_BASE + "/**").hasRole("ADMIN")
+                        .requestMatchers(ApiConstant.BOOKING_BASE + "/**").authenticated()
+                        .requestMatchers(ApiConstant.PARKING_BASE + "/**").authenticated()
+                        .requestMatchers(ApiConstant.PAYMENT_BASE + "/**").authenticated()
                         .anyRequest().permitAll()
                 )
 
@@ -50,6 +53,11 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+ @Bean
+ public PasswordEncoder passwordEncoder() {
+       return new BCryptPasswordEncoder(12);
     }
 
     @Bean
