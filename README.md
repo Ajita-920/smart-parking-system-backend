@@ -68,6 +68,27 @@ Authorization: Bearer <jwt_token>
 
 ---
 
+### Health — `/api/health`
+
+#### `GET /api/health`
+Check if the service is running. No authentication required.
+
+**Response `200`:**
+```json
+{
+  "responseCode": 200,
+  "responseMessage": "Service is running",
+  "timestamp": "2024-01-15T10:00:00",
+  "data": {
+    "status": "UP",
+    "service": "Smart Parking System",
+    "timestamp": "2024-01-15T10:00:00"
+  }
+}
+```
+
+---
+
 ### Auth — `/api/auth`
 
 #### `POST /api/auth/register`
