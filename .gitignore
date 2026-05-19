@@ -17,7 +17,7 @@ target/
 .env
 !.env.example
 .env.*
-
+.DS_*
 ### IntelliJ IDEA ###
 .idea
 *.iws
