@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
@@ -18,7 +19,7 @@ public class JwtUtil {
     private static final Key SECRET_KEY = Keys.hmacShaKeyFor(SECRET.getBytes());
 
     // Generate token
-    public String generateToken(String email, String role, Long userId) {
+    public String generateToken(String email, String role, UUID userId) {
         String roleWithPrefix = "ROLE_" + role.toUpperCase();   // → "ROLE_USER"
 
         return Jwts.builder()
