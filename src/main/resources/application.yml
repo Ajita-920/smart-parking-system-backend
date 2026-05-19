@@ -24,8 +24,14 @@ khalti:
     url: https://dev.khalti.com/api/v2/epayment/initiate/
   verify:
     url: https://dev.khalti.com/api/v2/epayment/lookup/
+  return:
+    url: ${KHALTI_RETURN_URL:http://localhost:8080/api/payments/khalti/verify}
   secret:
     key: "Key 05bf95cc57244045b8df5fad06748dab"
+
+app:
+  website:
+    url: ${APP_WEBSITE_URL:http://localhost:8080}
 
 # Actuator Management Endpoints
 management:

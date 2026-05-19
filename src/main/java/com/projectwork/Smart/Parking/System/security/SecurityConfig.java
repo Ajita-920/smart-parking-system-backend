@@ -40,6 +40,8 @@ public class SecurityConfig {
 
                         .requestMatchers(ApiConstant.AUTH_BASE + "/**").permitAll()
                         .requestMatchers(ApiConstant.HEALTH_BASE).permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                ApiConstant.PAYMENT_BASE + ApiConstant.PAYMENT_KHALTI_VERIFY).permitAll()
 
                         .requestMatchers(ApiConstant.VENDOR_BASE + "/**").hasRole("VENDOR")
                         .requestMatchers(ApiConstant.ADMIN_BASE + "/**").hasRole("ADMIN")
