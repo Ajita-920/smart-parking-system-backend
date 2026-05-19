@@ -15,6 +15,7 @@ public class ParkingLocationRequestDto {
     private double longitude;
     private int totalSlots;
     private int availableSlots;
+    //new added
     private Double twoWheelerRatePerHour;
     private Double fourWheelerRatePerHour;
 

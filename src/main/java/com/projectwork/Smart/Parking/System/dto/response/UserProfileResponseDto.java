@@ -1,7 +1,7 @@
 package com.projectwork.Smart.Parking.System.dto.response;
 
 import lombok.Data;
-
+//new added
 @Data
 public class UserProfileResponseDto {
     private Long id;

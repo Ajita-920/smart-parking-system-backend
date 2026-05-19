@@ -12,6 +12,7 @@ public class BookingResponseDto {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private double totalAmount;
+    //new refund amount and vehicle type added
     private VehicleType vehicleType;
     private Double refundAmount;
     private String message;

@@ -11,6 +11,7 @@ public class ParkingLocationResponseDto {
     private double longitude;
     private int availableSlots;
     private int totalSlots;
+    //new response for vehicle type
     private Double twoWheelerRatePerHour;
     private Double fourWheelerRatePerHour;
     private double distance;

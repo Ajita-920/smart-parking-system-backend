@@ -35,9 +35,8 @@ public final class ApiConstant {
     public static final String PARKING_BASE = API_BASE + "/parkings";
     public static final String PARKING_MAP_SPACES = "/map-spaces";
     public static final String PARKING_NEARBY_GPS = "/nearby-gps";
-    public static final String PARKING_THAMEL_NEARBY = "/areas/thamel/nearby";
-    public static final String PARKING_THAMEL_NEAREST = "/areas/thamel/nearest";
-    public static final String PARKING_THAMEL_NEAREST_LEGACY = "/nearby";
+    public static final String PARKING_THAMEL_CLOSEST = "/areas/closetothamel";
+    public static final String PARKING_THAMEL_NEAREST = "/areas/nearby";
     public static final String PARKING_THAMEL_AVAILABLE_SLOTS = "/areas/thamel/available-slots";
 
 

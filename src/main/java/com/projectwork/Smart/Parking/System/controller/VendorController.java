@@ -51,7 +51,7 @@ public class VendorController extends BaseController {
         if (request.getTotalSlots() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Total slots must be positive");
         }
-
+//wheeler rate per hour added new
         ParkingLocation parking = new ParkingLocation();
         parking.setName(request.getName());
         parking.setAddress(request.getAddress());
@@ -85,6 +85,7 @@ public class VendorController extends BaseController {
     }
 
     // ==================== UPDATE AVAILABLE SLOTS ====================
+    //new vendor updating parking slots
     @PutMapping({ApiConstant.VENDOR_UPDATE_PARKING_LEGACY})
     public ResponseEntity<?> updateAvailableSlots(
             @PathVariable Long id,
@@ -115,7 +116,7 @@ public class VendorController extends BaseController {
 
         return okResponse("Available slots updated successfully!", new HashMap<>());
     }
-
+//new vendor managing slot
     @PutMapping(ApiConstant.VENDOR_MANAGE_SLOT)
     public ResponseEntity<ApiResponse<Map<String, Object>>> manageSlots(
             @PathVariable Long id,
@@ -150,7 +151,7 @@ public class VendorController extends BaseController {
 
         return okResponse("Slot operation completed successfully!", response);
     }
-
+//new one
     @PutMapping(ApiConstant.VENDOR_UPDATE_PARKING_RATE)
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> updateParkingRates(
             @PathVariable Long id,
@@ -250,7 +251,7 @@ public class VendorController extends BaseController {
 
         return parking;
     }
-
+//new one
     private SlotBreakdown splitSlots(int totalSlots, int availableSlots) {
         int safeTotalSlots = Math.max(totalSlots, 0);
         int safeAvailableSlots = Math.min(Math.max(availableSlots, 0), safeTotalSlots);

@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-
+//wheeler rate per hour added
 @Entity
 @Table(name = "parking_locations")
 @Getter

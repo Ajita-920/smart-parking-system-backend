@@ -18,7 +18,7 @@ public class BookingRequestDto {
     @NotNull
     @Future
     private LocalDateTime endTime;
-
+//new vehicle type added
     @NotNull
     private VehicleType vehicleType;
 }

@@ -9,6 +9,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
 
     Optional<Payment> findByTransactionId(String oid);
+    //new added
     Optional<Payment> findTopByBookingIdOrderByIdDesc(Long bookingId);
 }
 

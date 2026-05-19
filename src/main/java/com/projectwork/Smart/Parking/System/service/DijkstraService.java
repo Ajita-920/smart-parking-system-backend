@@ -56,7 +56,7 @@ public class DijkstraService {
 
         return dtos;
     }
-
+//new one
     // Real GPS distance (Haversine) sorting across all parking locations.
     public List<ParkingLocationResponseDto> findClosestByGps(double userLat, double userLon, Integer maxSpots) {
         int limit = (maxSpots != null && maxSpots > 0) ? maxSpots : DEFAULT_GPS_MAX_SPOTS;
@@ -76,10 +76,10 @@ public class DijkstraService {
                 .collect(Collectors.toList());
     }
 
-//    public ParkingLocationResponseDto findNearestParking(double latitude, double longitude) {
-//        List<ParkingLocationResponseDto> closest = findClosestInThamel(latitude, longitude, 1);
-//        return closest.isEmpty() ? null : closest.get(0);
-//    }
+    public ParkingLocationResponseDto findNearestParking(double latitude, double longitude) {
+        List<ParkingLocationResponseDto> closest = findClosestInThamel(latitude, longitude, 1);
+        return closest.isEmpty() ? null : closest.get(0);
+    }
 
 //algorithm
     private Map<Node, Double> dijkstra(Node source, Map<Node, List<Edge>> graph) {
@@ -128,7 +128,7 @@ public class DijkstraService {
         dto.setVendorName(loc.getVendor() != null ? loc.getVendor().getName() : "Unknown");
         return dto;
     }
-
+//new one
     private double haversine(double lat1, double lon1, double lat2, double lon2) {
         final int R = 6371; // km
         double dLat = Math.toRadians(lat2 - lat1);

@@ -27,9 +27,7 @@ public class BookingController extends BaseController {
     public ResponseEntity<ApiResponse<BookingResponseDto>> createBooking(
             @Valid @RequestBody BookingRequestDto request,
             Authentication authentication) {   // Gets logged-in user
-
         String userEmail = authentication.getName(); // from JWT
-
         BookingResponseDto response = bookingService.createBooking(request, userEmail);
 
         return okResponse("Booking successful!", response);
@@ -41,7 +39,7 @@ public class BookingController extends BaseController {
         List<BookingResponseDto> bookings = bookingService.getMyBookings(email);
         return okResponse("My bookings fetched successfully!", bookings);
     }
-
+//new added
     @PutMapping(ApiConstant.BOOKING_CANCEL)
     public ResponseEntity<ApiResponse<BookingCancelResponseDto>> cancelBooking(
             @PathVariable Long bookingId,

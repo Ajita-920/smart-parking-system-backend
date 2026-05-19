@@ -11,6 +11,7 @@ public interface BookingService {
     BookingResponseDto createBooking(BookingRequestDto request, String currentUserEmail);
 
     Booking saveBooking(Booking booking);
+    //new updated
     List<BookingResponseDto> getMyBookings(String email);
     BookingCancelResponseDto cancelBooking(Long bookingId, String email);
 }

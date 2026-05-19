@@ -4,7 +4,7 @@ import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
-
+//new slots for vehicle added
 @Data
 public class VendorDashboardResponseDto {
     private int totalParkingLocations;

@@ -115,7 +115,7 @@ public class BookingServiceImpl implements BookingService {
         dto.setRefundAmount(booking.getRefundAmount());
         return dto;
     }
-
+//new feature cancel added
     @Override
     @Transactional
     public BookingCancelResponseDto cancelBooking(Long bookingId, String email) {
