@@ -11,6 +11,7 @@ public final class ApiConstant {
     public static final String AUTH_BASE = API_BASE + "/auth";
     public static final String AUTH_REGISTER = "/register";
     public static final String AUTH_LOGIN = "/login";
+    public static final String AUTH_LOGOUT = "/logout";
 
     // Admin
     public static final String ADMIN_BASE = API_BASE + "/admin";

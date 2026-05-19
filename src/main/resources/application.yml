@@ -4,9 +4,9 @@ spring:
 
   # Database configuration
   datasource:
-    url: jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres
-    username: postgres.tjsdexnghxfyezauwsee
-    password: m9G4DIyZU2vDRWYR
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   # Hibernate configuration
   jpa:
