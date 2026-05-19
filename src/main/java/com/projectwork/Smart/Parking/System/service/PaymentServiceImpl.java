@@ -6,17 +6,16 @@ import com.projectwork.Smart.Parking.System.entity.Booking;
 import com.projectwork.Smart.Parking.System.entity.Payment;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
-
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,53 +29,72 @@ public class PaymentServiceImpl implements PaymentService {
     private final RestClient restClient = RestClient.create();
 
     @Value("${khalti.initiate.url}")
-    private String KHALTI_INITIATE_URL;
+    private String khaltiInitiateUrl;
 
     @Value("${khalti.verify.url}")
-    private String KHALTI_VERIFY_URL;
+    private String khaltiVerifyUrl;
 
     @Value("${khalti.secret.key}")
-    private String KHALTI_SECRET_KEY;
+    private String khaltiSecretKey;
 
-    // payment initiation
+    /**
+     * The URL Khalti redirects back to after the user completes payment.
+     * Configured in application.properties so it works across environments
+     * (localhost dev, staging, production) without touching code.
+     *
+     * Example in application.properties:
+     * khalti.return.url=http://localhost:8080/api/payments/khalti/verify
+     */
+    @Value("${khalti.return.url}")
+    private String khaltiReturnUrl;
+
+    @Value("${app.website.url}")
+    private String websiteUrl;
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     @Transactional
     public PaymentResponseDto initiateKhaltiPayment(PaymentRequestDto request) {
 
         Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Booking not found."));
 
-        double amount = 100.0;
+        double amount = booking.getTotalAmount(); // use actual booking amount, not hardcoded
 
         Payment payment = new Payment();
         payment.setBooking(booking);
         payment.setAmount(amount);
         payment.setStatus("PENDING");
-        payment.setTransactionId("TXN-" + UUID.randomUUID().toString().substring(0,8));
+        payment.setTransactionId("TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         payment.setPaymentMethod("KHALTI");
 
         Payment savedPayment = paymentRepository.save(payment);
 
-        // request body
+        // Khalti expects amount in paisa (1 NPR = 100 paisa)
+        Map<String, Object> requestBody = Map.of(
+                "return_url", khaltiReturnUrl,
+                "website_url", websiteUrl,
+                "amount", (int) (amount * 100),
+                "purchase_order_id", savedPayment.getTransactionId(),
+                "purchase_order_name", "Parking Booking #" + booking.getId());
 
-        Map<String,Object> body = new HashMap<>();
-        body.put("return_url","http://localhost:8080/api/payments/khalti/verify");
-        body.put("website_url","http://localhost:8080");
-        body.put("amount",(int)(amount * 100));
-        body.put("purchase_order_id",savedPayment.getTransactionId());
-        body.put("purchase_order_name","Parking Booking");
-
-        Map response = restClient.post()
-                .uri(KHALTI_INITIATE_URL)
-                .header("Authorization",KHALTI_SECRET_KEY)
+        Map<String, Object> khaltiResponse = restClient.post()
+                .uri(khaltiInitiateUrl)
+                .header("Authorization", khaltiSecretKey)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
+                .body(requestBody)
                 .retrieve()
                 .body(Map.class);
 
-        String paymentUrl = (String) response.get("payment_url");
-        String pidx = (String) response.get("pidx");
+        if (khaltiResponse == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "No response received from Khalti.");
+        }
+
+        String paymentUrl = (String) khaltiResponse.get("payment_url");
+        String pidx = (String) khaltiResponse.get("pidx");
 
         PaymentResponseDto dto = new PaymentResponseDto();
         dto.setPaymentId(savedPayment.getId());
@@ -87,37 +105,43 @@ public class PaymentServiceImpl implements PaymentService {
         dto.setPaidAt(LocalDateTime.now());
         dto.setPaymentUrl(paymentUrl);
         dto.setPidx(pidx);
-        dto.setMessage("Khalti payment initiated successfully");
+        dto.setMessage("Redirect the user to paymentUrl to complete payment.");
 
         return dto;
     }
 
-    // verify
+    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     public PaymentResponseDto verifyKhaltiPayment(String pidx) {
 
-        Map<String,String> body = new HashMap<>();
-        body.put("pidx",pidx);
+        Map<String, String> requestBody = Map.of("pidx", pidx);
 
-        Map response = restClient.post()
-                .uri(KHALTI_VERIFY_URL)
-                .header("Authorization", KHALTI_SECRET_KEY)
+        Map<String, Object> khaltiResponse = restClient.post()
+                .uri(khaltiVerifyUrl)
+                .header("Authorization", khaltiSecretKey)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
+                .body(requestBody)
                 .retrieve()
                 .body(Map.class);
 
-        String status = (String) response.get("status");
+        if (khaltiResponse == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "No response received from Khalti during verification.");
+        }
+
+        String status = (String) khaltiResponse.get("status");
+
+        // Update Payment record status if we find it by pidx
+        // (pidx isn't stored yet — consider adding a pidx column to Payment entity)
 
         PaymentResponseDto dto = new PaymentResponseDto();
         dto.setStatus(status);
-        dto.setMessage("Payment verification completed");
-
+        dto.setMessage("Payment status: " + status);
         return dto;
     }
 
-    // save
+    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     public Payment processPayment(Payment payment) {
@@ -126,6 +150,8 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public Payment getPaymentById(Long id) {
-        return null;
+        return paymentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Payment with ID " + id + " not found."));
     }
 }

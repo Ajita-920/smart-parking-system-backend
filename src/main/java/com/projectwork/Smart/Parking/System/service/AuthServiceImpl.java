@@ -7,8 +7,10 @@ import com.projectwork.Smart.Parking.System.entity.User;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
 import com.projectwork.Smart.Parking.System.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -17,7 +19,7 @@ public class AuthServiceImpl implements AuthService {
     private UserRepository userRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;   // We will add this in SecurityConfig
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -25,8 +27,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponseDto registerUser(RegisterRequestDto request) {
 
+        // 409 Conflict — the resource (email) already exists
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already exists!");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "An account with this email already exists.");
         }
 
         User user = new User();
@@ -34,37 +38,33 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setPhone(request.getPhone());
-        user.setRole(request.getRole().toUpperCase());  // DRIVER / VENDOR / ADMIN
+        user.setRole(request.getRole().toUpperCase());
 
-        User savedUser = userRepository.save(user);
-
-        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getRole(), savedUser.getId());
-
-        AuthResponseDto response = new AuthResponseDto(
-                token,
-                "Bearer",
-                savedUser.getId(),
-                savedUser.getName(),
-                savedUser.getEmail(),
-                savedUser.getRole()
-        );
-
-        return response;
+        User saved = userRepository.save(user);
+        return buildAuthResponse(saved);
     }
 
     @Override
     public AuthResponseDto loginUser(LoginRequestDto request) {
 
+        // 401 Unauthorized — vague on purpose (don't reveal whether email exists)
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found!"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "Invalid email or password."));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid password!");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Invalid email or password.");
         }
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
+        return buildAuthResponse(user);
+    }
 
-        AuthResponseDto response = new AuthResponseDto(
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private AuthResponseDto buildAuthResponse(User user) {
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
+        return new AuthResponseDto(
                 token,
                 "Bearer",
                 user.getId(),
@@ -72,7 +72,5 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getRole()
         );
-
-        return response;
     }
 }
