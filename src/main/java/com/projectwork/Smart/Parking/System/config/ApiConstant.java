@@ -30,6 +30,7 @@ public final class ApiConstant {
     public static final String BOOKING_MY_LEGACY = "/mybookings";
     public static final String BOOKING_CANCEL = "/{bookingId}/cancel";
     public static final String BOOKING_DEBUG_USER_LEGACY = "debug-user";
+
     // Parking
     public static final String PARKING_BASE = API_BASE + "/parkings";
     public static final String PARKING_MAP_SPACES = "/map-spaces";
@@ -38,7 +39,6 @@ public final class ApiConstant {
     public static final String PARKING_THAMEL_NEAREST = "/areas/thamel/nearest";
     public static final String PARKING_THAMEL_NEAREST_LEGACY = "/nearby";
     public static final String PARKING_THAMEL_AVAILABLE_SLOTS = "/areas/thamel/available-slots";
-
 
 
     // Vendor
