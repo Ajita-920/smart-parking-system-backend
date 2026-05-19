@@ -29,13 +29,13 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final RestClient restClient = RestClient.create();
 
-    @Value("${KHALTI_INITIATE_URL}")
+    @Value("${khalti.initiate.url}")
     private String KHALTI_INITIATE_URL;
 
-    @Value("${KHALTI_VERIFY_URL}")
+    @Value("${khalti.verify.url}")
     private String KHALTI_VERIFY_URL;
 
-    @Value("${KHALTI_SECRET_KEY}")
+    @Value("${khalti.secret.key}")
     private String KHALTI_SECRET_KEY;
 
     // payment initiation
@@ -102,7 +102,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         Map response = restClient.post()
                 .uri(KHALTI_VERIFY_URL)
-                .header("Authorization","Key " + KHALTI_SECRET_KEY)
+                .header("Authorization", KHALTI_SECRET_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
