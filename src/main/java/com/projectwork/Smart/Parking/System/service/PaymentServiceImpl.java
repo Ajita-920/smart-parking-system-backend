@@ -61,7 +61,7 @@ public class PaymentServiceImpl implements PaymentService {
         // request body
 
         Map<String,Object> body = new HashMap<>();
-        body.put("return_url","http://localhost:8080/api/payment/khalti/verify");
+        body.put("return_url","http://localhost:8080/api/payments/khalti/verify");
         body.put("website_url","http://localhost:8080");
         body.put("amount",(int)(amount * 100));
         body.put("purchase_order_id",savedPayment.getTransactionId());

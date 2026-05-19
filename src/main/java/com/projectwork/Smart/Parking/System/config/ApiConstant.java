@@ -7,48 +7,57 @@ public final class ApiConstant {
 
     public static final String API_BASE = "/api";
 
-    // Auth
+    // ─── Auth ────────────────────────────────────────────────────────────────
     public static final String AUTH_BASE = API_BASE + "/auth";
-    public static final String AUTH_REGISTER = "/register";
-    public static final String AUTH_LOGIN = "/login";
-    public static final String AUTH_LOGOUT = "/logout";
+    public static final String AUTH_REGISTER = "/register"; // POST
+    public static final String AUTH_LOGIN = "/login"; // POST
 
-    // Admin
-    public static final String ADMIN_BASE = API_BASE + "/admin";
-    public static final String ADMIN_BOOKINGS = "/bookings";
-    public static final String ADMIN_VENDORS = "/vendors";
-    public static final String ADMIN_DRIVERS = "/drivers";
-    public static final String ADMIN_DASHBOARD = "/dashboard";
-
-    // Booking
+    // ─── Bookings ─────────────────────────────────────────────────────────────
+    // POST /api/bookings → create booking
+    // GET /api/bookings → all bookings (ADMIN)
+    // GET /api/bookings/me → current user's bookings
+    // GET /api/bookings/{id} → single booking
     public static final String BOOKING_BASE = API_BASE + "/bookings";
-    public static final String BOOKING_CREATE_LEGACY = "/create";
-    public static final String BOOKING_MY_LEGACY = "/mybookings";
-    public static final String BOOKING_DEBUG_USER = "/debug/current-user";
-    public static final String BOOKING_DEBUG_USER_LEGACY = "/debug-user";
+    public static final String BOOKING_ME = "/me";
+    public static final String BOOKING_BY_ID = "/{id}";
 
-    // Parking
+    // ─── Parking ──────────────────────────────────────────────────────────────
+    // GET /api/parking → all available (?area=thamel&available=true)
+    // GET /api/parking/nearby → N closest (?lat=&lng=&limit=5)
+    // GET /api/parking/nearest → single nearest (?lat=&lng=)
+    // GET /api/parking/mine → vendor's own locations (VENDOR)
+    // POST /api/parking → add location (VENDOR)
+    // PUT /api/parking/{id} → full update (VENDOR)
+    // PATCH /api/parking/{id}/slots → update available slots only (VENDOR)
+    // DELETE /api/parking/{id} → remove location (VENDOR)
     public static final String PARKING_BASE = API_BASE + "/parking";
-    public static final String PARKING_THAMEL_NEARBY_LEGACY = "areas/thamel-nearby";
-    public static final String PARKING_THAMEL_NEAREST = "/areas/thamel/nearest";
-    public static final String PARKING_THAMEL_AVAILABLE_SLOTS = "/areas/thamel/available-slots";
+    public static final String PARKING_NEARBY = "/nearby";
+    public static final String PARKING_NEAREST = "/nearest";
+    public static final String PARKING_MINE = "/mine";
+    public static final String PARKING_BY_ID = "/{id}";
+    public static final String PARKING_SLOTS = "/{id}/slots";
 
-
-    // Vendor
+    // ─── Vendors ──────────────────────────────────────────────────────────────
+    // GET /api/vendors/dashboard → vendor dashboard (VENDOR)
     public static final String VENDOR_BASE = API_BASE + "/vendors";
-    public static final String VENDOR_PARKING_LOCATIONS = "/view/parking-locations";
-    public static final String VENDOR_ADD_PARKING_LEGACY = "/addparking";
-    public static final String VENDOR_UPDATE_PARKING_AVAILABLE_SLOTS = "/parking-locations/{id}/available-slots";
-    public static final String VENDOR_UPDATE_PARKING_LEGACY = "/updateparking/{id}";
     public static final String VENDOR_DASHBOARD = "/dashboard";
-    public static final String VENDOR_DASHBOARD_SUMMARY = "/dashboard/summary";
 
-    // Health
-    public static final String HEALTH_BASE = API_BASE + "/health";
+    // ─── Admin ────────────────────────────────────────────────────────────────
+    // GET /api/admin/dashboard → platform stats
+    // GET /api/admin/bookings → all bookings
+    // GET /api/admin/users → all users (?role=VENDOR|DRIVER)
+    public static final String ADMIN_BASE = API_BASE + "/admin";
+    public static final String ADMIN_DASHBOARD = "/dashboard";
+    public static final String ADMIN_BOOKINGS = "/bookings";
+    public static final String ADMIN_USERS = "/users";
 
-    // Payment
-    public static final String PAYMENT_BASE = API_BASE + "/payment";
+    // ─── Payments ─────────────────────────────────────────────────────────────
+    // POST /api/payments/khalti/initiate → start Khalti payment
+    // GET /api/payments/khalti/verify → verify callback (?pidx=)
+    public static final String PAYMENT_BASE = API_BASE + "/payments";
     public static final String PAYMENT_KHALTI_INITIATE = "/khalti/initiate";
-    public static final String PAYMENT_KHALTI_BASE = PAYMENT_BASE + "/khalti";
-    public static final String PAYMENT_KHALTI_VERIFY = "/verify";
+    public static final String PAYMENT_KHALTI_VERIFY = "/khalti/verify";
+
+    // ─── Health ───────────────────────────────────────────────────────────────
+    public static final String HEALTH_BASE = API_BASE + "/health";
 }

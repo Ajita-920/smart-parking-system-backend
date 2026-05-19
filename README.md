@@ -165,10 +165,10 @@ Content-Type: application/json
 
 ---
 
-### Parking — `/api/parking`
+### Parking Locations — `/api/parking-locations`
 > Requires: `Authorization: Bearer <token>`
 
-#### `GET /api/parking/areas/thamel-nearby`
+#### `GET /api/parking-locations/nearby`
 Find the closest parking spots near a given coordinate in Thamel.
 
 **Headers:**
@@ -182,11 +182,12 @@ Authorization: Bearer <token>
 |------------|--------|----------|---------|---------------------------|
 | latitude   | double | Yes      | —       | User's current latitude   |
 | longitude  | double | Yes      | —       | User's current longitude  |
-| maxSpots   | int    | No       | 5       | Maximum results to return |
+| limit      | int    | No       | 5       | Maximum results to return |
+| area       | String | No       | thamel  | Supported area filter     |
 
 **Example Request:**
 ```
-GET /api/parking/areas/thamel-nearby?latitude=27.7172&longitude=85.3240&maxSpots=3
+GET /api/parking-locations/nearby?latitude=27.7172&longitude=85.3240&limit=3
 ```
 
 **Response `200`:**
@@ -212,7 +213,7 @@ GET /api/parking/areas/thamel-nearby?latitude=27.7172&longitude=85.3240&maxSpots
 
 ---
 
-#### `GET /api/parking/areas/thamel/nearest`
+#### `GET /api/parking-locations/nearest`
 Find the single nearest parking spot.
 
 **Headers:**
@@ -229,7 +230,7 @@ Authorization: Bearer <token>
 
 **Example Request:**
 ```
-GET /api/parking/areas/thamel/nearest?latitude=27.7172&longitude=85.3240
+GET /api/parking-locations/nearest?latitude=27.7172&longitude=85.3240
 ```
 
 **Response `200`:**
@@ -253,7 +254,7 @@ GET /api/parking/areas/thamel/nearest?latitude=27.7172&longitude=85.3240
 
 ---
 
-#### `GET /api/parking/areas/thamel/available-slots`
+#### `GET /api/parking-locations`
 Get all parking locations with available slots in Thamel.
 
 **Headers:**
@@ -297,7 +298,7 @@ Authorization: Bearer <token>
 ### Bookings — `/api/bookings`
 > Requires: `Authorization: Bearer <token>` (DRIVER role)
 
-#### `POST /api/bookings/create`
+#### `POST /api/bookings`
 Create a new parking booking.
 
 **Headers:**
@@ -336,7 +337,7 @@ Content-Type: application/json
 
 ---
 
-#### `GET /api/bookings/mybookings`
+#### `GET /api/bookings/mine`
 Retrieve all bookings for the currently authenticated user.
 
 **Headers:**
@@ -366,9 +367,9 @@ Authorization: Bearer <token>
 
 ---
 
-### Payment — `/api/payment`
+### Payment — `/api/payments`
 
-#### `POST /api/payment/khalti/initiate`
+#### `POST /api/payments/khalti/initiate`
 Initiate a payment for a booking.
 
 **Headers:**
@@ -408,7 +409,7 @@ Content-Type: application/json
 
 ---
 
-#### `GET /api/payment/khalti/verify`
+#### `GET /api/payments/khalti/verify`
 Verify a Khalti payment after the user completes payment on the gateway.
 
 **Headers:**
@@ -424,7 +425,7 @@ Authorization: Bearer <token>
 
 **Example Request:**
 ```
-GET /api/payment/khalti/verify?pidx=abc123xyz
+GET /api/payments/khalti/verify?pidx=abc123xyz
 ```
 
 **Response `200`:**
@@ -449,10 +450,10 @@ GET /api/payment/khalti/verify?pidx=abc123xyz
 
 ---
 
-### Vendor — `/api/vendors`
+### Parking Location Management — `/api/parking-locations`
 > Requires: `Authorization: Bearer <token>` (VENDOR role)
 
-#### `POST /api/vendors/addparking`
+#### `POST /api/parking-locations`
 Add a new parking location under the authenticated vendor.
 
 **Headers:**
@@ -494,7 +495,7 @@ Content-Type: application/json
 
 ---
 
-#### `GET /api/vendors/view/parking-locations`
+#### `GET /api/parking-locations/mine`
 Get all parking locations owned by the authenticated vendor.
 
 **Headers:**
@@ -525,7 +526,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### `PUT /api/vendors/parking-locations/{id}/available-slots`
+#### `PATCH /api/parking-locations/{id}/availability`
 Update the available slot count for a specific parking location.
 
 **Headers:**
@@ -543,12 +544,11 @@ Authorization: Bearer <token>
 
 | Parameter       | Type    | Required | Description                    |
 |-----------------|---------|----------|--------------------------------|
-| availableSlots  | Integer | No       | New available slot count       |
-| newAvailableSlots | Integer | No     | Legacy alias for availableSlots |
+| availableSlots  | Integer | Yes      | New available slot count       |
 
 **Example Request:**
 ```
-PUT /api/vendors/parking-locations/5/available-slots?availableSlots=15
+PATCH /api/parking-locations/5/availability?availableSlots=15
 ```
 
 **Response `200`:**
@@ -567,7 +567,10 @@ PUT /api/vendors/parking-locations/5/available-slots?availableSlots=15
 
 ---
 
-#### `GET /api/vendors/dashboard`
+### Vendor — `/api/vendors`
+> Requires: `Authorization: Bearer <token>` (VENDOR role)
+
+#### `GET /api/vendors/me/dashboard`
 Get dashboard statistics for the authenticated vendor.
 
 **Headers:**

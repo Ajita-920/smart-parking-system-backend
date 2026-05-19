@@ -8,14 +8,13 @@ import java.time.LocalDateTime;
 
 public class BaseController {
 
-    protected <T> ResponseEntity<ApiResponse<T>> okResponse(String message, T data){
+    protected <T> ResponseEntity<ApiResponse<T>> okResponse(String message, T data) {
         ApiResponse<T> response = new ApiResponse<>(
                 HttpStatus.OK.value(),
                 message,
                 LocalDateTime.now(),
                 data
         );
-
         return ResponseEntity.ok(response);
     }
-    }
+}
