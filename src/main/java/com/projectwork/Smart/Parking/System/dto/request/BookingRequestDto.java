@@ -1,5 +1,6 @@
 package com.projectwork.Smart.Parking.System.dto.request;
 
+import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -17,4 +18,7 @@ public class BookingRequestDto {
     @NotNull
     @Future
     private LocalDateTime endTime;
+
+    @NotNull
+    private VehicleType vehicleType;
 }

@@ -2,6 +2,8 @@ package com.projectwork.Smart.Parking.System.controller;
 
 import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.VendorPricingUpdateRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.VendorSlotManagementRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
 import com.projectwork.Smart.Parking.System.dto.response.VendorDashboardResponseDto;
@@ -21,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -56,6 +59,8 @@ public class VendorController extends BaseController {
         parking.setLongitude(request.getLongitude());
         parking.setTotalSlots(request.getTotalSlots());
         parking.setAvailableSlots(request.getTotalSlots());
+        parking.setTwoWheelerRatePerHour(request.getTwoWheelerRatePerHour() != null ? request.getTwoWheelerRatePerHour() : 50.0);
+        parking.setFourWheelerRatePerHour(request.getFourWheelerRatePerHour() != null ? request.getFourWheelerRatePerHour() : 100.0);
         parking.setVendor(vendor);
 
         ParkingLocation saved = parkingLocationRepository.save(parking);
@@ -80,7 +85,7 @@ public class VendorController extends BaseController {
     }
 
     // ==================== UPDATE AVAILABLE SLOTS ====================
-    @PutMapping({ApiConstant.VENDOR_UPDATE_PARKING_AVAILABLE_SLOTS, ApiConstant.VENDOR_UPDATE_PARKING_LEGACY})
+    @PutMapping({ApiConstant.VENDOR_UPDATE_PARKING_LEGACY})
     public ResponseEntity<?> updateAvailableSlots(
             @PathVariable Long id,
             @RequestParam(required = false) Integer availableSlots,
@@ -109,6 +114,59 @@ public class VendorController extends BaseController {
         parkingLocationRepository.save(parking);
 
         return okResponse("Available slots updated successfully!", new HashMap<>());
+    }
+
+    @PutMapping(ApiConstant.VENDOR_MANAGE_SLOT)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> manageSlots(
+            @PathVariable Long id,
+            @Valid @RequestBody VendorSlotManagementRequestDto request,
+            Authentication authentication) {
+        ParkingLocation parking = getVendorParkingLocationOrThrow(id, authentication.getName());
+
+        int slotCount = request.getSlotCount();
+        if (slotCount <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "slotCount must be positive");
+        }
+
+        int currentAvailable = parking.getAvailableSlots();
+        int updatedAvailable = request.getAllocate()
+                ? currentAvailable - slotCount
+                : currentAvailable + slotCount;
+
+        if (updatedAvailable < 0 || updatedAvailable > parking.getTotalSlots()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Slot operation exceeds allowed range (0 to total slots)");
+        }
+
+        parking.setAvailableSlots(updatedAvailable);
+        parkingLocationRepository.save(parking);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("parkingLocationId", parking.getId());
+        response.put("availableSlots", parking.getAvailableSlots());
+        response.put("totalSlots", parking.getTotalSlots());
+        response.put("operation", request.getAllocate() ? "ALLOCATE" : "FREE");
+        response.put("slotCount", slotCount);
+
+        return okResponse("Slot operation completed successfully!", response);
+    }
+
+    @PutMapping(ApiConstant.VENDOR_UPDATE_PARKING_RATE)
+    public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> updateParkingRates(
+            @PathVariable Long id,
+            @Valid @RequestBody VendorPricingUpdateRequestDto request,
+            Authentication authentication) {
+        ParkingLocation parking = getVendorParkingLocationOrThrow(id, authentication.getName());
+
+        if (request.getTwoWheelerRatePerHour() != null) {
+            parking.setTwoWheelerRatePerHour(request.getTwoWheelerRatePerHour());
+        }
+        if (request.getFourWheelerRatePerHour() != null) {
+            parking.setFourWheelerRatePerHour(request.getFourWheelerRatePerHour());
+        }
+
+        parkingLocationRepository.save(parking);
+        return okResponse("Parking rates updated successfully!", mapToResponse(parking));
     }
 
     @GetMapping({ApiConstant.VENDOR_DASHBOARD, ApiConstant.VENDOR_DASHBOARD_SUMMARY})
@@ -174,9 +232,23 @@ public class VendorController extends BaseController {
         dto.setAddress(parking.getAddress());
         dto.setLatitude(parking.getLatitude());
         dto.setLongitude(parking.getLongitude());
+        dto.setTotalSlots(parking.getTotalSlots());
         dto.setAvailableSlots(parking.getAvailableSlots());
+        dto.setTwoWheelerRatePerHour(parking.getTwoWheelerRatePerHour());
+        dto.setFourWheelerRatePerHour(parking.getFourWheelerRatePerHour());
         dto.setVendorName(parking.getVendor().getName());
         return dto;
+    }
+
+    private ParkingLocation getVendorParkingLocationOrThrow(Long id, String email) {
+        ParkingLocation parking = parkingLocationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Parking location not found"));
+
+        if (parking.getVendor() == null || !parking.getVendor().getEmail().equals(email)) {
+            throw new RuntimeException("You can only manage your own parking!");
+        }
+
+        return parking;
     }
 
     private SlotBreakdown splitSlots(int totalSlots, int availableSlots) {

@@ -2,6 +2,7 @@ package com.projectwork.Smart.Parking.System.controller;
 
 import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import com.projectwork.Smart.Parking.System.dto.request.BookingRequestDto;
+import com.projectwork.Smart.Parking.System.dto.response.BookingCancelResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
 import com.projectwork.Smart.Parking.System.service.BookingService;
@@ -41,7 +42,15 @@ public class BookingController extends BaseController {
         return okResponse("My bookings fetched successfully!", bookings);
     }
 
-    @GetMapping({ApiConstant.BOOKING_DEBUG_USER, ApiConstant.BOOKING_DEBUG_USER_LEGACY})
+    @PutMapping(ApiConstant.BOOKING_CANCEL)
+    public ResponseEntity<ApiResponse<BookingCancelResponseDto>> cancelBooking(
+            @PathVariable Long bookingId,
+            Authentication authentication) {
+        BookingCancelResponseDto response = bookingService.cancelBooking(bookingId, authentication.getName());
+        return okResponse("Booking cancellation processed!", response);
+    }
+
+    @GetMapping({ApiConstant.BOOKING_DEBUG_USER_LEGACY})
     @PreAuthorize("permitAll()")   // ← add this line
     public ResponseEntity<ApiResponse<String>> debugUser(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) {

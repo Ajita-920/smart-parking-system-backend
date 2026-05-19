@@ -38,6 +38,10 @@ public class Booking {
     @Future
     private LocalDateTime endTime;
     private String status;
+    @Enumerated(EnumType.STRING)
+    private VehicleType vehicleType;
+    private LocalDateTime cancelledAt;
+    private Double refundAmount;
 
 
     @ManyToOne

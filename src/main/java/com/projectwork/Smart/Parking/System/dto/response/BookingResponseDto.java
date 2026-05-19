@@ -1,5 +1,6 @@
 package com.projectwork.Smart.Parking.System.dto.response;
 
+import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -11,5 +12,7 @@ public class BookingResponseDto {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private double totalAmount;
+    private VehicleType vehicleType;
+    private Double refundAmount;
     private String message;
 }

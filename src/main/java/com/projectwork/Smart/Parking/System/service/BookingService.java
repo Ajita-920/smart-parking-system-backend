@@ -1,6 +1,7 @@
 package com.projectwork.Smart.Parking.System.service;
 
 import com.projectwork.Smart.Parking.System.dto.request.BookingRequestDto;
+import com.projectwork.Smart.Parking.System.dto.response.BookingCancelResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import com.projectwork.Smart.Parking.System.entity.Booking;
 
@@ -11,4 +12,5 @@ public interface BookingService {
 
     Booking saveBooking(Booking booking);
     List<BookingResponseDto> getMyBookings(String email);
+    BookingCancelResponseDto cancelBooking(Long bookingId, String email);
 }

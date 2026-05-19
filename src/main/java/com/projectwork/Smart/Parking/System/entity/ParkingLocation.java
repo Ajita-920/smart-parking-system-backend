@@ -27,6 +27,11 @@ public class ParkingLocation {
     private int totalSlots;
     private int availableSlots;
 
+    private Double twoWheelerRatePerHour;
+    private Double fourWheelerRatePerHour;
+
+    private Double distance;
+
     @ManyToOne
     @JoinColumn(name = "vendor_id")
     private User vendor;

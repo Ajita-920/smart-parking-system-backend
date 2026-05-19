@@ -20,6 +20,7 @@ public class DijkstraService {
     }
 
     private static final int DEFAULT_MAX_SPOTS = 5;
+    private static final int DEFAULT_GPS_MAX_SPOTS = 20;
 
    //finding nearest slots
     public List<ParkingLocationResponseDto> findClosestInThamel(double userLat, double userLon, Integer maxSpots) {
@@ -56,10 +57,29 @@ public class DijkstraService {
         return dtos;
     }
 
-    public ParkingLocationResponseDto findNearestParking(double latitude, double longitude) {
-        List<ParkingLocationResponseDto> closest = findClosestInThamel(latitude, longitude, 1);
-        return closest.isEmpty() ? null : closest.get(0);
+    // Real GPS distance (Haversine) sorting across all parking locations.
+    public List<ParkingLocationResponseDto> findClosestByGps(double userLat, double userLon, Integer maxSpots) {
+        int limit = (maxSpots != null && maxSpots > 0) ? maxSpots : DEFAULT_GPS_MAX_SPOTS;
+
+        List<ParkingLocation> available = parkingLocationRepository.findByAvailableSlotsGreaterThan(0);
+        if (available.isEmpty()) return Collections.emptyList();
+
+        return available.stream()
+                .map(loc -> {
+                    ParkingLocationResponseDto dto = mapToDto(loc);
+                    double distanceKm = haversine(userLat, userLon, loc.getLatitude(), loc.getLongitude());
+                    dto.setDistance(Math.round(distanceKm * 100.0) / 100.0);
+                    return dto;
+                })
+                .sorted(Comparator.comparingDouble(ParkingLocationResponseDto::getDistance))
+                .limit(limit)
+                .collect(Collectors.toList());
     }
+
+//    public ParkingLocationResponseDto findNearestParking(double latitude, double longitude) {
+//        List<ParkingLocationResponseDto> closest = findClosestInThamel(latitude, longitude, 1);
+//        return closest.isEmpty() ? null : closest.get(0);
+//    }
 
 //algorithm
     private Map<Node, Double> dijkstra(Node source, Map<Node, List<Edge>> graph) {
@@ -101,6 +121,10 @@ public class DijkstraService {
         dto.setLatitude(loc.getLatitude());
         dto.setLongitude(loc.getLongitude());
         dto.setAvailableSlots(loc.getAvailableSlots());
+        dto.setTwoWheelerRatePerHour(loc.getTwoWheelerRatePerHour());
+        dto.setFourWheelerRatePerHour(loc.getFourWheelerRatePerHour());
+        dto.setTotalSlots(loc.getTotalSlots());
+        dto.setDistance(loc.getDistance() != null ? loc.getDistance() : 0.0);
         dto.setVendorName(loc.getVendor() != null ? loc.getVendor().getName() : "Unknown");
         return dto;
     }

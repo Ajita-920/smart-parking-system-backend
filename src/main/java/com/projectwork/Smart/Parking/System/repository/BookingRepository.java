@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.List;
 
 @Repository
@@ -17,4 +18,5 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             "AND ((b.startTime < :endTime) AND (b.endTime > :startTime))")
     List<Booking> findOverlappingBookings(Long locationId, LocalDateTime startTime, LocalDateTime endTime);
     List<Booking> findByDriver(User driver);
+    Optional<Booking> findByIdAndDriver(Long id, User driver);
 }

@@ -10,6 +10,9 @@ public class ParkingLocationResponseDto {
     private double latitude;
     private double longitude;
     private int availableSlots;
+    private int totalSlots;
+    private Double twoWheelerRatePerHour;
+    private Double fourWheelerRatePerHour;
     private double distance;
     private String vendorName;
 }

@@ -19,26 +19,35 @@ public final class ApiConstant {
     public static final String ADMIN_DRIVERS = "/drivers";
     public static final String ADMIN_DASHBOARD = "/dashboard";
 
+    // User
+    public static final String USER_BASE = API_BASE + "/users";
+    public static final String USER_ME = "/myDetail";
+    public static final String USER_PROFILE = "/update/profile";
+
     // Booking
     public static final String BOOKING_BASE = API_BASE + "/bookings";
     public static final String BOOKING_CREATE_LEGACY = "/create";
     public static final String BOOKING_MY_LEGACY = "/mybookings";
-    public static final String BOOKING_DEBUG_USER = "/debug/current-user";
-    public static final String BOOKING_DEBUG_USER_LEGACY = "/debug-user";
-
+    public static final String BOOKING_CANCEL = "/{bookingId}/cancel";
+    public static final String BOOKING_DEBUG_USER_LEGACY = "debug-user";
     // Parking
-    public static final String PARKING_BASE = API_BASE + "/parking";
-    public static final String PARKING_THAMEL_NEARBY_LEGACY = "areas/thamel-nearby";
+    public static final String PARKING_BASE = API_BASE + "/parkings";
+    public static final String PARKING_MAP_SPACES = "/map-spaces";
+    public static final String PARKING_NEARBY_GPS = "/nearby-gps";
+    public static final String PARKING_THAMEL_NEARBY = "/areas/thamel/nearby";
     public static final String PARKING_THAMEL_NEAREST = "/areas/thamel/nearest";
+    public static final String PARKING_THAMEL_NEAREST_LEGACY = "/nearby";
     public static final String PARKING_THAMEL_AVAILABLE_SLOTS = "/areas/thamel/available-slots";
+
 
 
     // Vendor
     public static final String VENDOR_BASE = API_BASE + "/vendors";
-    public static final String VENDOR_PARKING_LOCATIONS = "/view/parking-locations";
+    public static final String VENDOR_PARKING_LOCATIONS = "/parking-locations";
     public static final String VENDOR_ADD_PARKING_LEGACY = "/addparking";
-    public static final String VENDOR_UPDATE_PARKING_AVAILABLE_SLOTS = "/parking-locations/{id}/available-slots";
     public static final String VENDOR_UPDATE_PARKING_LEGACY = "/updateparking/{id}";
+    public static final String VENDOR_MANAGE_SLOT = "/parking-locations/{id}/slot-management";
+    public static final String VENDOR_UPDATE_PARKING_RATE = "/parking-locations/{id}/rates";
     public static final String VENDOR_DASHBOARD = "/dashboard";
     public static final String VENDOR_DASHBOARD_SUMMARY = "/dashboard/summary";
 
