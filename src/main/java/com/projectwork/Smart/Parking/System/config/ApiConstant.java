@@ -51,6 +51,9 @@ public final class ApiConstant {
     public static final String VENDOR_DASHBOARD = "/dashboard";
     public static final String VENDOR_DASHBOARD_SUMMARY = "/dashboard/summary";
 
+    // Health
+    public static final String HEALTH_BASE = API_BASE + "/health";
+
     // Payment
     public static final String PAYMENT_BASE = API_BASE + "/payment";
     public static final String PAYMENT_KHALTI_INITIATE = "/khalti/initiate";

@@ -38,7 +38,8 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(ApiConstant.AUTH_BASE + "/**").permitAll()
-                        .requestMatchers(ApiConstant.VENDOR_BASE + "/**", ApiConstant.VENDOR_BASE + "/**").hasRole("VENDOR")
+                       .requestMatchers(ApiConstant.HEALTH_BASE).permitAll()
+                        .requestMatchers(ApiConstant.VENDOR_BASE + "/**").hasRole("VENDOR")
                         .requestMatchers(ApiConstant.ADMIN_BASE + "/**").hasRole("ADMIN")
                         .requestMatchers(ApiConstant.USER_BASE + "/**").authenticated()
                         .requestMatchers(ApiConstant.BOOKING_BASE + "/**").authenticated()
