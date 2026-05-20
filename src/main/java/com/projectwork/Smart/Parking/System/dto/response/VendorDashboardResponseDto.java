@@ -4,15 +4,19 @@ import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 public class VendorDashboardResponseDto {
+
     private int totalParkingLocations;
     private int totalSlots;
     private int availableSlots;
     private int occupiedSlots;
+
     private VehicleSlotSummary twoWheelerSlots = new VehicleSlotSummary();
     private VehicleSlotSummary fourWheelerSlots = new VehicleSlotSummary();
+
     private List<LocationSlotSummary> locations = new ArrayList<>();
 
     @Data
@@ -24,11 +28,13 @@ public class VendorDashboardResponseDto {
 
     @Data
     public static class LocationSlotSummary {
-        private Long id;
+        private UUID id;
         private String name;
+
         private int totalSlots;
         private int availableSlots;
         private int occupiedSlots;
+
         private VehicleSlotSummary twoWheelerSlots = new VehicleSlotSummary();
         private VehicleSlotSummary fourWheelerSlots = new VehicleSlotSummary();
     }
