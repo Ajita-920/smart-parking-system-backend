@@ -2,18 +2,16 @@ package com.projectwork.Smart.Parking.System.dto.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
+@Data
 public class UpdateSlotsRequestDto {
 
-    @NotNull(message = "availableSlots is required.")
-    @Min(value = 0, message = "availableSlots cannot be negative.")
-    private Integer availableSlots;
+    @NotNull(message = "Available four-wheeler slots is required.")
+    @Min(value = 0, message = "Available four-wheeler slots cannot be negative.")
+    private Integer availableFourWheelerSlots;
 
-    public Integer getAvailableSlots() {
-        return availableSlots;
-    }
-
-    public void setAvailableSlots(Integer availableSlots) {
-        this.availableSlots = availableSlots;
-    }
+    @NotNull(message = "Available two-wheeler slots is required.")
+    @Min(value = 0, message = "Available two-wheeler slots cannot be negative.")
+    private Integer availableTwoWheelerSlots;
 }
