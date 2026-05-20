@@ -66,6 +66,18 @@ public class ParkingServiceImpl implements ParkingService {
 
     @Override
     @Transactional(readOnly = true)
+    public ParkingLocationResponseDto getParkingById(UUID id) {
+        ParkingLocation parking = parkingLocationRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Parking location not found."
+                ));
+
+        return toResponseDto(parking);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ParkingLocationResponseDto> getMyParkingLocations(String currentUserEmail) {
         User vendor = resolveVendor(currentUserEmail);
 
@@ -189,19 +201,25 @@ public class ParkingServiceImpl implements ParkingService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ParkingSlotResponseDto> getAvailableSlots(UUID parkingLocationId, String vehicleType) {
+    public List<ParkingSlotResponseDto> getParkingSlots(UUID parkingLocationId, String vehicleType) {
         ParkingLocation parking = parkingLocationRepository.findByIdAndDeletedAtIsNull(parkingLocationId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Parking location not found."
                 ));
 
-        VehicleType parsedVehicleType = parseVehicleType(vehicleType);
+        List<ParkingSlot> slots;
 
-        return parkingSlotRepository.findByLocationAndVehicleTypeAndStatusAndDeletedAtIsNull(
-                        parking,
-                        parsedVehicleType,
-                        ParkingSlotStatus.AVAILABLE)
+        slots = parkingSlotRepository.findByLocationAndDeletedAtIsNull(parking);
+
+        if (vehicleType != null && !vehicleType.isBlank()) {
+            VehicleType parsedVehicleType = parseVehicleType(vehicleType);
+            slots = slots.stream()
+                    .filter(slot -> slot.getVehicleType() == parsedVehicleType)
+                    .toList();
+        }
+
+        return slots
                 .stream()
                 .map(this::toSlotResponseDto)
                 .toList();

@@ -41,7 +41,6 @@ public class ParkingController extends BaseController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getAllParking(
             @RequestParam(required = false) String area,
             @RequestParam(defaultValue = "true") boolean available) {
@@ -55,7 +54,6 @@ public class ParkingController extends BaseController {
     }
 
     @GetMapping(ApiConstant.PARKING_NEARBY)
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getNearbyParking(
             @RequestParam double lat,
             @RequestParam double lng,
@@ -70,7 +68,6 @@ public class ParkingController extends BaseController {
     }
 
     @GetMapping(ApiConstant.PARKING_NEAREST)
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> getNearestParking(
             @RequestParam double lat,
             @RequestParam double lng) {
@@ -84,7 +81,6 @@ public class ParkingController extends BaseController {
     }
 
     @GetMapping("/nearby-gps")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findClosestByGps(
             @RequestParam double latitude,
             @RequestParam double longitude,
@@ -99,7 +95,6 @@ public class ParkingController extends BaseController {
     }
 
     @GetMapping("/thamel/closest")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findClosestInThamel(
             @RequestParam double latitude,
             @RequestParam double longitude,
@@ -116,7 +111,6 @@ public class ParkingController extends BaseController {
     }
 
     @GetMapping("/thamel/nearest")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> findNearestInThamel(
             @RequestParam double latitude,
             @RequestParam double longitude) {
@@ -138,18 +132,25 @@ public class ParkingController extends BaseController {
                 parkingService.getMyParkingLocations(authentication.getName()));
     }
 
+    @GetMapping(ApiConstant.PARKING_BY_ID)
+    public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> getParkingById(
+            @PathVariable UUID id) {
+        return okResponse(
+                "Parking location fetched successfully!",
+                parkingService.getParkingById(id));
+    }
+
     @GetMapping(ApiConstant.PARKING_SLOTS)
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<List<ParkingSlotResponseDto>>> getAvailableSlots(
+    public ResponseEntity<ApiResponse<List<ParkingSlotResponseDto>>> getParkingSlots(
             @PathVariable UUID id,
-            @RequestParam String vehicleType) {
-        List<ParkingSlotResponseDto> slots = parkingService.getAvailableSlots(id, vehicleType);
+            @RequestParam(required = false) String vehicleType) {
+        List<ParkingSlotResponseDto> slots = parkingService.getParkingSlots(id, vehicleType);
 
         if (slots.isEmpty()) {
-            return okResponse("No available slots found for the selected vehicle type.", slots);
+            return okResponse("No parking slots found.", slots);
         }
 
-        return okResponse("Available slots fetched successfully!", slots);
+        return okResponse("Parking slots fetched successfully!", slots);
     }
 
     @GetMapping(ApiConstant.PARKING_ALL_SLOTS)

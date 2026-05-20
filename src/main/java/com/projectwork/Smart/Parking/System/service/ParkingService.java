@@ -16,6 +16,8 @@ public interface ParkingService {
 
     ParkingLocationResponseDto getNearestParking(double latitude, double longitude);
 
+    ParkingLocationResponseDto getParkingById(UUID id);
+
     List<ParkingLocationResponseDto> getMyParkingLocations(String currentUserEmail);
 
     ParkingLocationResponseDto addParkingLocation(ParkingLocationRequestDto request, String currentUserEmail);
@@ -27,7 +29,7 @@ public interface ParkingService {
 
     void deleteParkingLocation(UUID id, String currentUserEmail);
 
-    List<ParkingSlotResponseDto> getAvailableSlots(UUID parkingLocationId, String vehicleType);
+    List<ParkingSlotResponseDto> getParkingSlots(UUID parkingLocationId, String vehicleType);
 
     List<ParkingSlotResponseDto> getVendorSlots(UUID parkingLocationId, String currentUserEmail);
 }

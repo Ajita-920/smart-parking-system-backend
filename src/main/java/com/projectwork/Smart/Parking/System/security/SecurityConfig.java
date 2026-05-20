@@ -54,9 +54,13 @@ public class SecurityConfig {
                                                 .requestMatchers(ApiConstant.HEALTH_BASE).permitAll()
 
                                                 .requestMatchers(
-                                                                HttpMethod.GET,
-                                                                ApiConstant.PAYMENT_BASE
+                                                HttpMethod.GET,
+                                                ApiConstant.PAYMENT_BASE
                                                                                 + ApiConstant.PAYMENT_KHALTI_VERIFY)
+                                                .permitAll()
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                ApiConstant.PARKING_BASE + "/**")
                                                 .permitAll()
 
                                                 .requestMatchers(
