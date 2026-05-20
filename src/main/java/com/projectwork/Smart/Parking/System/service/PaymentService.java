@@ -4,13 +4,15 @@ import com.projectwork.Smart.Parking.System.dto.request.PaymentRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.PaymentResponseDto;
 import com.projectwork.Smart.Parking.System.entity.Payment;
 
+import java.util.UUID;
+
 public interface PaymentService {
 
-        PaymentResponseDto initiateKhaltiPayment(PaymentRequestDto request);
+    PaymentResponseDto initiateKhaltiPayment(PaymentRequestDto request);
 
-        PaymentResponseDto verifyKhaltiPayment(String pidx);
+    PaymentResponseDto verifyKhaltiPayment(String pidx);
 
-        Payment processPayment(Payment payment);
+    Payment processPayment(Payment payment);
 
-    Payment getPaymentById(Long id);
+    Payment getPaymentById(UUID id);
 }

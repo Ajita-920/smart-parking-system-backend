@@ -6,62 +6,49 @@ import com.projectwork.Smart.Parking.System.dto.request.BookingRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import com.projectwork.Smart.Parking.System.service.BookingService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping(ApiConstant.BOOKING_BASE)
-@PreAuthorize("isAuthenticated()")   // all booking routes require a logged-in user
+@PreAuthorize("isAuthenticated()")
 public class BookingController extends BaseController {
 
-    @Autowired
-    private BookingService bookingService;
+    private final BookingService bookingService;
 
-    /**
-     * POST /api/bookings
-     * Body: BookingRequestDto
-     * Creates a new booking for the authenticated user.
-     */
+    public BookingController(BookingService bookingService) {
+        this.bookingService = bookingService;
+    }
+
     @PostMapping
+    @PreAuthorize("hasRole('DRIVER')")
     public ResponseEntity<ApiResponse<BookingResponseDto>> createBooking(
             @Valid @RequestBody BookingRequestDto request,
             Authentication authentication) {
 
-        String userEmail = authentication.getName();
-        BookingResponseDto response = bookingService.createBooking(request, userEmail);
+        BookingResponseDto response = bookingService.createBooking(request, authentication.getName());
         return okResponse("Booking created successfully!", response);
     }
 
-    /**
-     * GET /api/bookings/me
-     * Returns all bookings belonging to the currently authenticated user.
-     */
     @GetMapping(ApiConstant.BOOKING_ME)
     public ResponseEntity<ApiResponse<List<BookingResponseDto>>> getMyBookings(
             Authentication authentication) {
 
-        String email = authentication.getName();
-        List<BookingResponseDto> bookings = bookingService.getMyBookings(email);
+        List<BookingResponseDto> bookings = bookingService.getMyBookings(authentication.getName());
         return okResponse("Bookings fetched successfully!", bookings);
     }
 
-    /**
-     * GET /api/bookings/{id}
-     * Returns a single booking by ID.
-     * Users can only fetch their own; ADMIN can fetch any (enforce in service layer).
-     */
     @GetMapping(ApiConstant.BOOKING_BY_ID)
     public ResponseEntity<ApiResponse<BookingResponseDto>> getBookingById(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             Authentication authentication) {
 
-        String email = authentication.getName();
-        BookingResponseDto booking = bookingService.getBookingById(id, email);
+        BookingResponseDto booking = bookingService.getBookingById(id, authentication.getName());
         return okResponse("Booking fetched successfully!", booking);
     }
 }

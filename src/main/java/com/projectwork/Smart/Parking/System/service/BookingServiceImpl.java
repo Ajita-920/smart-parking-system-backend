@@ -3,123 +3,231 @@ package com.projectwork.Smart.Parking.System.service;
 import com.projectwork.Smart.Parking.System.dto.request.BookingRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import com.projectwork.Smart.Parking.System.entity.Booking;
+import com.projectwork.Smart.Parking.System.entity.BookingStatus;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
+import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
+import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
 import com.projectwork.Smart.Parking.System.entity.User;
+import com.projectwork.Smart.Parking.System.entity.UserRole;
+import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
+import com.projectwork.Smart.Parking.System.repository.ParkingSlotRepository;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 public class BookingServiceImpl implements BookingService {
 
-    @Autowired
-    private BookingRepository bookingRepository;
+    private static final BigDecimal DEFAULT_HOURLY_RATE = new BigDecimal("100.00");
 
-    @Autowired
-    private ParkingLocationRepository parkingLocationRepository;
+    private final BookingRepository bookingRepository;
+    private final ParkingLocationRepository parkingLocationRepository;
+    private final ParkingSlotRepository parkingSlotRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    // ─────────────────────────────────────────────────────────────────────────
+    public BookingServiceImpl(
+            BookingRepository bookingRepository,
+            ParkingLocationRepository parkingLocationRepository,
+            ParkingSlotRepository parkingSlotRepository,
+            UserRepository userRepository
+    ) {
+        this.bookingRepository = bookingRepository;
+        this.parkingLocationRepository = parkingLocationRepository;
+        this.parkingSlotRepository = parkingSlotRepository;
+        this.userRepository = userRepository;
+    }
 
     @Override
     @Transactional
     public BookingResponseDto createBooking(BookingRequestDto request, String currentUserEmail) {
 
-        User driver = userRepository.findByEmail(currentUserEmail)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found."));
+        User driver = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found."
+                ));
 
-        ParkingLocation location = parkingLocationRepository.findById(request.getParkingLocationId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parking location not found."));
-
-        if (location.getAvailableSlots() <= 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "No available slots at this location.");
+        if (driver.getRole() != UserRole.DRIVER) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only drivers can create bookings."
+            );
         }
 
-        // Double-booking prevention: reject overlapping reservations for the same location
-        List<Booking> overlaps = bookingRepository.findOverlappingBookings(
-                location.getId(), request.getStartTime(), request.getEndTime());
+        ParkingLocation location = parkingLocationRepository
+                .findByIdAndDeletedAtIsNull(request.getParkingLocationId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Parking location not found."
+                ));
 
-        if (!overlaps.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "This time slot is already booked at the selected location.");
-        }
+        VehicleType vehicleType = parseVehicleType(request.getVehicleType());
+
+        validateAvailableSlotCount(location, vehicleType);
+
+        ParkingSlot slot = parkingSlotRepository
+                .findByLocation_IdAndVehicleTypeAndStatusAndDeletedAtIsNull(
+                        location.getId(),
+                        vehicleType,
+                        ParkingSlotStatus.AVAILABLE
+                )
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "No available " + vehicleType + " slot at this location."
+                ));
+
+        slot.markReserved();
+        decrementAvailableSlotCount(location, vehicleType);
 
         Booking booking = new Booking();
         booking.setDriver(driver);
         booking.setParkingLocation(location);
+        booking.setSlot(slot);
         booking.setStartTime(request.getStartTime());
         booking.setEndTime(request.getEndTime());
-        booking.setStatus("CONFIRMED");
-        booking.setTotalAmount(calculateAmount(location));
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setTotalAmount(calculateAmount(request.getStartTime(), request.getEndTime()));
 
-        Booking saved = bookingRepository.save(booking);
+        ParkingSlot savedSlot = parkingSlotRepository.save(slot);
+        ParkingLocation savedLocation = parkingLocationRepository.save(location);
 
-        // Decrement available slot count
-        location.setAvailableSlots(location.getAvailableSlots() - 1);
-        parkingLocationRepository.save(location);
+        booking.setSlot(savedSlot);
+        booking.setParkingLocation(savedLocation);
 
-        return mapToResponse(saved);
+        Booking savedBooking = bookingRepository.save(booking);
+
+        BookingResponseDto response = mapToResponse(savedBooking);
+        response.setMessage("Booking created successfully.");
+        return response;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-
     @Override
-    public List<BookingResponseDto> getMyBookings(String email) {
-        User driver = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found."));
+    @Transactional(readOnly = true)
+    public List<BookingResponseDto> getMyBookings(String currentUserEmail) {
+        User driver = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found."
+                ));
 
-        return bookingRepository.findByDriver(driver)
+        return bookingRepository.findByDriverAndDeletedAtIsNull(driver)
                 .stream()
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
-    public BookingResponseDto getBookingById(Long id, String currentUserEmail) {
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Booking with ID " + id + " not found."));
+    @Transactional(readOnly = true)
+    public BookingResponseDto getBookingById(UUID id, String currentUserEmail) {
+        Booking booking = bookingRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Booking not found."
+                ));
 
-        // Ownership check: the requester must be the booking's driver
-        // (ADMIN bypass: check role in the security layer via @PreAuthorize, not here)
-        if (!booking.getDriver().getEmail().equals(currentUserEmail)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "You do not have permission to view this booking.");
+        User currentUser = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found."
+                ));
+
+        boolean isAdmin = currentUser.getRole() == UserRole.ADMIN;
+        boolean isBookingDriver = booking.getDriver().getId().equals(currentUser.getId());
+        boolean isLocationVendor = currentUser.getRole() == UserRole.VENDOR
+                && booking.getParkingLocation().getVendor().getId().equals(currentUser.getId());
+
+        if (!isAdmin && !isBookingDriver && !isLocationVendor) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You do not have permission to view this booking."
+            );
         }
 
-        return mapToResponse(booking);
+        BookingResponseDto response = mapToResponse(booking);
+        response.setMessage("Booking fetched successfully.");
+        return response;
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    //  PRIVATE HELPERS
-    // ─────────────────────────────────────────────────────────────────────────
 
     private BookingResponseDto mapToResponse(Booking booking) {
         BookingResponseDto dto = new BookingResponseDto();
+
         dto.setBookingId(booking.getId());
-        dto.setParkingName(booking.getParkingLocation().getName());
+
+        dto.setDriverId(booking.getDriver().getId());
+        dto.setDriverName(booking.getDriver().getName());
+
+        dto.setParkingLocationId(booking.getParkingLocation().getId());
+        dto.setParkingLocationName(booking.getParkingLocation().getName());
+
+        dto.setSlotId(booking.getSlot().getId());
+        dto.setSlotNumber(booking.getSlot().getSlotNumber());
+        dto.setVehicleType(booking.getSlot().getVehicleType());
+
         dto.setStatus(booking.getStatus());
+
         dto.setStartTime(booking.getStartTime());
         dto.setEndTime(booking.getEndTime());
+
         dto.setTotalAmount(booking.getTotalAmount());
-        dto.setMessage("Booking fetched successfully.");
+
         return dto;
     }
 
-    private double calculateAmount(ParkingLocation location) {
-        // TODO: make dynamic — e.g. (duration in hours) * (rate per hour from ParkingLocation)
-        return 100.0;
+    private BigDecimal calculateAmount(LocalDateTime startTime, LocalDateTime endTime) {
+        long minutes = Duration.between(startTime, endTime).toMinutes();
+        long hours = Math.max(1, (long) Math.ceil(minutes / 60.0));
+
+        return DEFAULT_HOURLY_RATE.multiply(BigDecimal.valueOf(hours));
+    }
+
+    private void validateAvailableSlotCount(ParkingLocation location, VehicleType vehicleType) {
+        if (vehicleType == VehicleType.FOUR_WHEELER && location.getAvailableFourWheelerSlots() <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "No available four-wheeler slots at this location."
+            );
+        }
+
+        if (vehicleType == VehicleType.TWO_WHEELER && location.getAvailableTwoWheelerSlots() <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "No available two-wheeler slots at this location."
+            );
+        }
+    }
+
+    private void decrementAvailableSlotCount(ParkingLocation location, VehicleType vehicleType) {
+        if (vehicleType == VehicleType.FOUR_WHEELER) {
+            location.setAvailableFourWheelerSlots(location.getAvailableFourWheelerSlots() - 1);
+        } else {
+            location.setAvailableTwoWheelerSlots(location.getAvailableTwoWheelerSlots() - 1);
+        }
+    }
+
+    private VehicleType parseVehicleType(String vehicleType) {
+        try {
+            return VehicleType.valueOf(vehicleType.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid vehicle type. Allowed values: TWO_WHEELER, FOUR_WHEELER."
+            );
+        }
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase();
     }
 }

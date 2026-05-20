@@ -4,9 +4,10 @@ import com.projectwork.Smart.Parking.System.dto.request.PaymentRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.PaymentResponseDto;
 import com.projectwork.Smart.Parking.System.entity.Booking;
 import com.projectwork.Smart.Parking.System.entity.Payment;
+import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
+import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -15,18 +16,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Map;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
     private final BookingRepository bookingRepository;
     private final PaymentRepository paymentRepository;
-
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient;
 
     @Value("${khalti.initiate.url}")
     private String khaltiInitiateUrl;
@@ -37,48 +37,70 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${khalti.secret.key}")
     private String khaltiSecretKey;
 
-    /**
-     * The URL Khalti redirects back to after the user completes payment.
-     * Configured in application.properties so it works across environments
-     * (localhost dev, staging, production) without touching code.
-     *
-     * Example in application.properties:
-     * khalti.return.url=http://localhost:8080/api/payments/khalti/verify
-     */
     @Value("${khalti.return.url}")
     private String khaltiReturnUrl;
 
     @Value("${app.website.url}")
     private String websiteUrl;
 
-    // ─────────────────────────────────────────────────────────────────────────
+    public PaymentServiceImpl(
+            BookingRepository bookingRepository,
+            PaymentRepository paymentRepository
+    ) {
+        this.bookingRepository = bookingRepository;
+        this.paymentRepository = paymentRepository;
+        this.restClient = RestClient.create();
+    }
 
     @Override
     @Transactional
     public PaymentResponseDto initiateKhaltiPayment(PaymentRequestDto request) {
 
-        Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Booking not found."));
+        PaymentMethod paymentMethod = parsePaymentMethod(request.getPaymentMethod());
 
-        double amount = booking.getTotalAmount(); // use actual booking amount, not hardcoded
+        if (paymentMethod != PaymentMethod.KHALTI) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "This endpoint only supports KHALTI payment."
+            );
+        }
+
+        Booking booking = bookingRepository.findByIdAndDeletedAtIsNull(request.getBookingId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Booking not found."
+                ));
+
+        BigDecimal amount = booking.getTotalAmount();
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid booking amount."
+            );
+        }
 
         Payment payment = new Payment();
         payment.setBooking(booking);
         payment.setAmount(amount);
-        payment.setStatus("PENDING");
-        payment.setTransactionId("TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-        payment.setPaymentMethod("KHALTI");
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setPaymentMethod(PaymentMethod.KHALTI);
+        payment.setTransactionId(generateTransactionId());
 
         Payment savedPayment = paymentRepository.save(payment);
 
-        // Khalti expects amount in paisa (1 NPR = 100 paisa)
+        int amountInPaisa = amount
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(0, RoundingMode.HALF_UP)
+                .intValue();
+
         Map<String, Object> requestBody = Map.of(
                 "return_url", khaltiReturnUrl,
                 "website_url", websiteUrl,
-                "amount", (int) (amount * 100),
+                "amount", amountInPaisa,
                 "purchase_order_id", savedPayment.getTransactionId(),
-                "purchase_order_name", "Parking Booking #" + booking.getId());
+                "purchase_order_name", "Parking Booking #" + booking.getId()
+        );
 
         Map<String, Object> khaltiResponse = restClient.post()
                 .uri(khaltiInitiateUrl)
@@ -89,30 +111,29 @@ public class PaymentServiceImpl implements PaymentService {
                 .body(Map.class);
 
         if (khaltiResponse == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "No response received from Khalti.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "No response received from Khalti."
+            );
         }
 
         String paymentUrl = (String) khaltiResponse.get("payment_url");
         String pidx = (String) khaltiResponse.get("pidx");
 
-        PaymentResponseDto dto = new PaymentResponseDto();
-        dto.setPaymentId(savedPayment.getId());
-        dto.setBookingId(booking.getId());
-        dto.setAmount(amount);
-        dto.setStatus("PENDING");
-        dto.setTransactionId(savedPayment.getTransactionId());
-        dto.setPaidAt(LocalDateTime.now());
-        dto.setPaymentUrl(paymentUrl);
-        dto.setPidx(pidx);
-        dto.setMessage("Redirect the user to paymentUrl to complete payment.");
+        savedPayment.setPaymentUrl(paymentUrl);
+        savedPayment.setPidx(pidx);
 
-        return dto;
+        Payment updatedPayment = paymentRepository.save(savedPayment);
+
+        PaymentResponseDto response = mapToResponse(updatedPayment);
+        response.setPidx(pidx);
+        response.setMessage("Redirect the user to paymentUrl to complete payment.");
+
+        return response;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-
     @Override
+    @Transactional
     public PaymentResponseDto verifyKhaltiPayment(String pidx) {
 
         Map<String, String> requestBody = Map.of("pidx", pidx);
@@ -126,32 +147,86 @@ public class PaymentServiceImpl implements PaymentService {
                 .body(Map.class);
 
         if (khaltiResponse == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "No response received from Khalti during verification.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "No response received from Khalti during verification."
+            );
         }
 
-        String status = (String) khaltiResponse.get("status");
+        Payment payment = paymentRepository.findByPidxAndDeletedAtIsNull(pidx)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Payment not found for this pidx."
+                ));
 
-        // Update Payment record status if we find it by pidx
-        // (pidx isn't stored yet — consider adding a pidx column to Payment entity)
+        String khaltiStatus = String.valueOf(khaltiResponse.get("status"));
 
-        PaymentResponseDto dto = new PaymentResponseDto();
-        dto.setStatus(status);
-        dto.setMessage("Payment status: " + status);
-        return dto;
+        if ("Completed".equalsIgnoreCase(khaltiStatus) || "SUCCESS".equalsIgnoreCase(khaltiStatus)) {
+            payment.markSuccess();
+        } else if ("Refunded".equalsIgnoreCase(khaltiStatus)) {
+            payment.markRefunded();
+        } else if ("Failed".equalsIgnoreCase(khaltiStatus)
+                || "Expired".equalsIgnoreCase(khaltiStatus)
+                || "User canceled".equalsIgnoreCase(khaltiStatus)) {
+            payment.markFailed();
+        }
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        PaymentResponseDto response = mapToResponse(savedPayment);
+        response.setPidx(pidx);
+        response.setMessage("Payment status: " + khaltiStatus);
+
+        return response;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-
     @Override
+    @Transactional
     public Payment processPayment(Payment payment) {
         return paymentRepository.save(payment);
     }
 
     @Override
-    public Payment getPaymentById(Long id) {
-        return paymentRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Payment with ID " + id + " not found."));
+    @Transactional(readOnly = true)
+    public Payment getPaymentById(UUID id) {
+        return paymentRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Payment not found."
+                ));
+    }
+
+    private PaymentResponseDto mapToResponse(Payment payment) {
+        PaymentResponseDto dto = new PaymentResponseDto();
+
+        dto.setPaymentId(payment.getId());
+        dto.setBookingId(payment.getBooking().getId());
+        dto.setAmount(payment.getAmount());
+        dto.setStatus(payment.getStatus());
+        dto.setPaymentMethod(payment.getPaymentMethod());
+        dto.setTransactionId(payment.getTransactionId());
+        dto.setPaymentUrl(payment.getPaymentUrl());
+        dto.setPaidAt(payment.getPaidAt());
+        dto.setPidx(payment.getPidx());
+
+        return dto;
+    }
+
+    private PaymentMethod parsePaymentMethod(String paymentMethod) {
+        try {
+            return PaymentMethod.valueOf(paymentMethod.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid payment method. Allowed values: CASH, KHALTI, ESEWA."
+            );
+        }
+    }
+
+    private String generateTransactionId() {
+        return "TXN-" + UUID.randomUUID()
+                .toString()
+                .substring(0, 8)
+                .toUpperCase();
     }
 }
