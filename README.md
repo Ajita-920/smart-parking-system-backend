@@ -373,6 +373,7 @@ Booking behavior:
 - Available slot counts are decremented after booking.
 - Minimum billable duration is 1 hour.
 - Booking amount uses the location's vehicle-specific hourly rate.
+- Booking responses include latest payment status, payment method, payment ID, and paid time when payment exists.
 - Cancelling releases the reserved slot.
 - Refund is marked pending only when there is a successful payment and the booking starts more than 1 hour later.
 

@@ -1,6 +1,8 @@
 package com.projectwork.Smart.Parking.System.dto.response;
 
 import com.projectwork.Smart.Parking.System.entity.BookingStatus;
+import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
+import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
 import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import lombok.Data;
 
@@ -35,4 +37,9 @@ public class BookingResponseDto {
     private BigDecimal totalAmount;
 
     private String message;
+
+    private UUID paymentId;
+    private PaymentStatus paymentStatus;
+    private PaymentMethod paymentMethod;
+    private Instant paidAt;
 }

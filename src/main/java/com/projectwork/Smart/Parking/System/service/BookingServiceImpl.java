@@ -314,6 +314,15 @@ public class BookingServiceImpl implements BookingService {
                 dto.setEndTime(booking.getEndTime());
                 dto.setCancelledAt(booking.getCancelledAt());
                 dto.setTotalAmount(booking.getTotalAmount());
+                dto.setPaymentStatus(PaymentStatus.PENDING);
+
+                paymentRepository.findFirstByBooking_IdAndDeletedAtIsNullOrderByCreatedAtDesc(booking.getId())
+                                .ifPresent(payment -> {
+                                        dto.setPaymentId(payment.getId());
+                                        dto.setPaymentStatus(payment.getStatus());
+                                        dto.setPaymentMethod(payment.getPaymentMethod());
+                                        dto.setPaidAt(payment.getPaidAt());
+                                });
 
                 return dto;
         }

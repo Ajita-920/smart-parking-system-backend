@@ -22,6 +22,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
             UUID bookingId,
             PaymentStatus status);
 
+    Optional<Payment> findFirstByBooking_IdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID bookingId);
+
     List<Payment> findByBookingAndDeletedAtIsNull(Booking booking);
 
     List<Payment> findByBooking_IdAndDeletedAtIsNull(UUID bookingId);
