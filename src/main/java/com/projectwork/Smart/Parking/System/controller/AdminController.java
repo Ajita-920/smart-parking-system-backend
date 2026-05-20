@@ -8,12 +8,16 @@ import com.projectwork.Smart.Parking.System.service.AdminService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping(ApiConstant.ADMIN_BASE)
@@ -46,5 +50,31 @@ public class AdminController extends BaseController {
         return okResponse(
                 "Users fetched successfully!",
                 adminService.getUsers(role));
+    }
+
+    @PutMapping(ApiConstant.ADMIN_USER_BAN)
+    public ResponseEntity<ApiResponse<UserResponseDto>> banUser(@PathVariable UUID id) {
+        return okResponse(
+                "User banned successfully!",
+                adminService.banUser(id));
+    }
+
+    @DeleteMapping(ApiConstant.ADMIN_USER_BY_ID)
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
+        adminService.deleteUser(id);
+        return okResponse("User deleted successfully!", null);
+    }
+
+    @PutMapping(ApiConstant.ADMIN_VENDOR_APPROVE)
+    public ResponseEntity<ApiResponse<UserResponseDto>> approveVendor(@PathVariable UUID id) {
+        return okResponse(
+                "Vendor approved successfully!",
+                adminService.approveVendor(id));
+    }
+
+    @DeleteMapping(ApiConstant.ADMIN_VENDOR_BY_ID)
+    public ResponseEntity<ApiResponse<Void>> deleteVendor(@PathVariable UUID id) {
+        adminService.deleteVendor(id);
+        return okResponse("Vendor deleted successfully!", null);
     }
 }

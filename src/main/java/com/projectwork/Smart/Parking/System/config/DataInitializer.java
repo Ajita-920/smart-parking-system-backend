@@ -44,6 +44,7 @@ public class DataInitializer implements CommandLineRunner {
         user.setPassword(passwordEncoder.encode(rawPassword));
         user.setPhone(phone);
         user.setRole(role);
+        user.setApproved(true);
         userRepository.save(user);
 
         log.info("Seed inserted: {} ({})", email, role);

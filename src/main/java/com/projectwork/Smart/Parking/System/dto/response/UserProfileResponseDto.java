@@ -12,4 +12,6 @@ public class UserProfileResponseDto {
     private String email;
     private String phone;
     private String role;
+    private boolean banned;
+    private boolean approved;
 }

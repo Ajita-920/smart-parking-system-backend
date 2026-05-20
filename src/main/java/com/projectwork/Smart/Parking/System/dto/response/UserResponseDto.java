@@ -13,4 +13,6 @@ public class UserResponseDto {
     private String email;
     private String phone;
     private UserRole role;
+    private boolean banned;
+    private boolean approved;
 }

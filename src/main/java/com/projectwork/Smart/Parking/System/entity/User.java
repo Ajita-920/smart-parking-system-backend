@@ -56,6 +56,12 @@ public class User extends BaseEntity {
     @Column(name = "role", nullable = false, length = 10)
     private UserRole role = UserRole.DRIVER;
 
+    @Column(name = "banned", nullable = false, columnDefinition = "boolean default false")
+    private boolean banned = false;
+
+    @Column(name = "approved", nullable = false, columnDefinition = "boolean default true")
+    private boolean approved = true;
+
     @PrePersist
     @PreUpdate
     private void normalizeFields() {

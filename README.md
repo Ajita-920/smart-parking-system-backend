@@ -25,6 +25,8 @@ Backend API for the Smart Parking System project. It is built with Spring Boot a
 - Access token blacklisting on logout
 - BCrypt password hashing
 - Role-based authorization for `DRIVER`, `VENDOR`, and `ADMIN`
+- Admin moderation for banning users and approving vendors
+- Banned users and unapproved vendors are blocked from authenticated access
 - User profile viewing and updating
 - Password change from profile update
 - Vendor parking location CRUD
@@ -49,6 +51,8 @@ Backend API for the Smart Parking System project. It is built with Spring Boot a
 - Admin dashboard with user and booking stats
 - Admin booking listing
 - Admin user listing with optional role filter
+- Admin user banning and soft deletion
+- Admin vendor approval and soft deletion
 - Soft-delete support through `deleted_at`
 - Unified API response wrapper
 - Health endpoint and Spring Actuator health exposure
@@ -201,9 +205,13 @@ Login and registration return:
   "userId": "uuid",
   "name": "Driver One",
   "email": "driver@parking.com",
-  "role": "DRIVER"
+  "role": "DRIVER",
+  "banned": false,
+  "approved": true
 }
 ```
+
+New vendor registrations are marked unapproved until an admin approves them. Banned users and unapproved vendors cannot log in, refresh tokens, or use protected endpoints with existing tokens.
 
 ## Common Response Format
 
@@ -423,6 +431,10 @@ Supported actions:
 | GET | `/api/admin/bookings` | ADMIN | List all bookings |
 | GET | `/api/admin/users` | ADMIN | List all users |
 | GET | `/api/admin/users?role=DRIVER` | ADMIN | List users by role |
+| PUT | `/api/admin/users/{id}/ban` | ADMIN | Ban a non-admin user |
+| DELETE | `/api/admin/users/{id}` | ADMIN | Soft-delete a non-admin user |
+| PUT | `/api/admin/vendors/{id}/approve` | ADMIN | Approve a vendor account |
+| DELETE | `/api/admin/vendors/{id}` | ADMIN | Soft-delete a vendor account and its parking locations |
 
 Accepted role filters:
 
@@ -436,7 +448,7 @@ Accepted role filters:
 | --- | --- |
 | DRIVER | Search parking, create bookings, view own bookings, cancel own bookings, initiate payments |
 | VENDOR | Manage own parking locations, update available slots, view vendor dashboard, view related bookings by ID, check in and complete bookings |
-| ADMIN | View dashboard stats, list users, list bookings, view bookings |
+| ADMIN | View dashboard stats, list users, list bookings, view bookings, ban users, delete users, approve vendors, delete vendors |
 
 ## Useful cURL Examples
 

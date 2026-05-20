@@ -75,6 +75,8 @@ public class UserController extends BaseController {
         dto.setEmail(user.getEmail());
         dto.setPhone(user.getPhone());
         dto.setRole(user.getRole().name());
+        dto.setBanned(user.isBanned());
+        dto.setApproved(user.isApproved());
         return dto;
     }
 }

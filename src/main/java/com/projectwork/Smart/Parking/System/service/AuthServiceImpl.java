@@ -72,6 +72,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setPhone(request.getPhone().trim());
         user.setRole(role);
+        user.setApproved(role != UserRole.VENDOR);
 
         User savedUser = userRepository.save(user);
 
@@ -93,6 +94,8 @@ public class AuthServiceImpl implements AuthService {
                     HttpStatus.UNAUTHORIZED,
                     "Invalid email or password.");
         }
+
+        validateUserCanAuthenticate(user);
 
         return buildAuthResponse(user);
     }
@@ -131,6 +134,8 @@ public class AuthServiceImpl implements AuthService {
                     "User is no longer active.");
         }
 
+        validateUserCanAuthenticate(user);
+
         String newRawRefreshToken = generateRawRefreshToken();
         String newTokenHash = hashToken(newRawRefreshToken);
 
@@ -153,7 +158,9 @@ public class AuthServiceImpl implements AuthService {
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                user.getRole());
+                user.getRole(),
+                user.isBanned(),
+                user.isApproved());
     }
 
     @Override
@@ -209,7 +216,23 @@ public class AuthServiceImpl implements AuthService {
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                user.getRole());
+                user.getRole(),
+                user.isBanned(),
+                user.isApproved());
+    }
+
+    private void validateUserCanAuthenticate(User user) {
+        if (user.isBanned()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Your account has been banned.");
+        }
+
+        if (user.getRole() == UserRole.VENDOR && !user.isApproved()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Vendor account is not approved yet.");
+        }
     }
 
     private void saveRefreshToken(User user, String tokenHash) {

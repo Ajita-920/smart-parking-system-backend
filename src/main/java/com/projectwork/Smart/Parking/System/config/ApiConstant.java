@@ -79,6 +79,10 @@ public final class ApiConstant {
     public static final String ADMIN_DASHBOARD = "/dashboard";
     public static final String ADMIN_BOOKINGS = "/bookings";
     public static final String ADMIN_USERS = "/users";
+    public static final String ADMIN_USER_BAN = "/users/{id}/ban";
+    public static final String ADMIN_USER_BY_ID = "/users/{id}";
+    public static final String ADMIN_VENDOR_APPROVE = "/vendors/{id}/approve";
+    public static final String ADMIN_VENDOR_BY_ID = "/vendors/{id}";
 
     // ─── Payments ─────────────────────────────────────────────────────────────
     // POST /api/payments/khalti/initiate → start Khalti payment
