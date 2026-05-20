@@ -12,8 +12,7 @@ public class SmartParkingSystemApplication {
         // Configuration of DotEnv Java
         Dotenv env = Dotenv.configure().ignoreIfMissing().load();
         env.entries().forEach((DotenvEntry entry) -> System.setProperty(
-                entry.getKey(), entry.getValue()
-        ));
+                entry.getKey(), entry.getValue()));
 
         SpringApplication.run(SmartParkingSystemApplication.class, args);
     }

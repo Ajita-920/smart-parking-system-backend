@@ -1,40 +1,48 @@
 package com.projectwork.Smart.Parking.System.exception;
 
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandlers {
 
-    /**
-     * Handles @Valid / @Validated failures on request bodies.
-     * Returns 400 with a field → message map inside the standard ApiResponse envelope.
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(
             MethodArgumentNotValidException ex) {
 
         Map<String, String> fieldErrors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors()
-                .forEach(e -> fieldErrors.put(e.getField(), e.getDefaultMessage()));
+
+        ex.getBindingResult()
+                .getFieldErrors()
+                .forEach(error -> fieldErrors.put(
+                        error.getField(),
+                        error.getDefaultMessage()));
 
         return buildResponse(HttpStatus.BAD_REQUEST, "Validation failed", fieldErrors);
     }
 
-    /**
-     * Handles missing required @RequestParam values.
-     * e.g. GET /api/parking/nearby without ?lat= or ?lng=
-     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleConstraintViolation(
+            ConstraintViolationException ex) {
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validation failed: " + ex.getMessage(),
+                null);
+    }
+
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiResponse<Object>> handleMissingParam(
             MissingServletRequestParameterException ex) {
@@ -43,43 +51,63 @@ public class GlobalExceptionHandlers {
         return buildResponse(HttpStatus.BAD_REQUEST, message, null);
     }
 
-    /**
-     * Handles ResponseStatusException — thrown explicitly in controllers and services
-     * with a specific HTTP status (404, 403, 400, 409, etc.).
-     * Without this handler every ResponseStatusException fell through to the 500 catch-all.
-     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex) {
+
+        String message = "Invalid value for parameter '" + ex.getName() + "'.";
+
+        return buildResponse(HttpStatus.BAD_REQUEST, message, null);
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Object>> handleResponseStatus(
             ResponseStatusException ex) {
 
         HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
-        return buildResponse(status, ex.getReason(), null);
+        String message = ex.getReason() != null ? ex.getReason() : status.getReasonPhrase();
+
+        return buildResponse(status, message, null);
     }
 
-    /**
-     * Handles all other uncaught exceptions.
-     * Returns 500. Message is included for development — consider masking in production.
-     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(
+            AccessDeniedException ex) {
+
+        return buildResponse(
+                HttpStatus.FORBIDDEN,
+                "You do not have permission to access this resource.",
+                null);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Object>> handleIllegalArgument(
+            IllegalArgumentException ex) {
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                null);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGlobal(Exception ex) {
+
         return buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred: " + ex.getMessage(),
-                null
-        );
+                null);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  HELPER
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private <T> ResponseEntity<ApiResponse<T>> buildResponse(HttpStatus status, String message, T data) {
+    private <T> ResponseEntity<ApiResponse<T>> buildResponse(
+            HttpStatus status,
+            String message,
+            T data) {
         ApiResponse<T> body = new ApiResponse<>(
                 status.value(),
                 message,
-                LocalDateTime.now(),
-                data
-        );
+                data);
+
         return ResponseEntity.status(status).body(body);
     }
 }
