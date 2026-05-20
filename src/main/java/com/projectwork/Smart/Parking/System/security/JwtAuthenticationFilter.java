@@ -1,5 +1,6 @@
 package com.projectwork.Smart.Parking.System.security;
 
+import com.projectwork.Smart.Parking.System.repository.BlacklistedTokenRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,16 +18,23 @@ import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Instant;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
+    private final BlacklistedTokenRepository blacklistedTokenRepository;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(
+            JwtUtil jwtUtil,
+            UserDetailsService userDetailsService,
+            BlacklistedTokenRepository blacklistedTokenRepository
+    ) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
+        this.blacklistedTokenRepository = blacklistedTokenRepository;
     }
 
     @Override
@@ -35,9 +43,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
 
@@ -47,7 +57,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            final String token = authHeader.substring(7);
+            final String token = authHeader.substring(7).trim();
+            final String jti = jwtUtil.extractJti(token);
+
+            if (jti != null && blacklistedTokenRepository.existsByJtiAndExpiresAtAfterAndDeletedAtIsNull(jti, Instant.now())) {
+                throw new JwtException("Token has been revoked.");
+            }
+
             final String email = jwtUtil.extractUsername(token);
 
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -76,7 +92,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             response.setContentType("application/json");
-            response.getWriter().write("{\"message\":\"Invalid or expired token\"}");
+            response.getWriter().write("{\"message\":\"Invalid, expired, or revoked token\"}");
         }
     }
 }

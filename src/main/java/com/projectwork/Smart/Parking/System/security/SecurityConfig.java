@@ -22,82 +22,90 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+        private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-    }
+        public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+                this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        }
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable())
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                http
+                                .csrf(csrf -> csrf.disable())
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                                                .requestMatchers(HttpMethod.POST,
+                                                                ApiConstant.AUTH_BASE + ApiConstant.AUTH_REGISTER)
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.POST,
+                                                                ApiConstant.AUTH_BASE + ApiConstant.AUTH_LOGIN)
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.POST,
+                                                                ApiConstant.AUTH_BASE + ApiConstant.AUTH_REFRESH)
+                                                .permitAll()
+                                                .requestMatchers(ApiConstant.HEALTH_BASE).permitAll()
+                                                .requestMatchers(HttpMethod.GET,
+                                                                ApiConstant.PAYMENT_BASE
+                                                                                + ApiConstant.PAYMENT_KHALTI_VERIFY)
+                                                .permitAll()
 
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                                .requestMatchers(HttpMethod.POST,
+                                                                ApiConstant.AUTH_BASE + ApiConstant.AUTH_LOGOUT)
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.POST,
+                                                                ApiConstant.AUTH_BASE + ApiConstant.AUTH_LOGOUT_ALL)
+                                                .authenticated()
 
-                        .requestMatchers(ApiConstant.AUTH_BASE + "/**").permitAll()
-                        .requestMatchers(ApiConstant.HEALTH_BASE).permitAll()
-                        .requestMatchers(HttpMethod.GET,
-                                ApiConstant.PAYMENT_BASE + ApiConstant.PAYMENT_KHALTI_VERIFY).permitAll()
+                                                .requestMatchers(ApiConstant.VENDOR_BASE + "/**").hasRole("VENDOR")
+                                                .requestMatchers(ApiConstant.ADMIN_BASE + "/**").hasRole("ADMIN")
 
-                        .requestMatchers(ApiConstant.VENDOR_BASE + "/**").hasRole("VENDOR")
-                        .requestMatchers(ApiConstant.ADMIN_BASE + "/**").hasRole("ADMIN")
+                                                .requestMatchers(ApiConstant.BOOKING_BASE + "/**").authenticated()
+                                                .requestMatchers(ApiConstant.PARKING_BASE + "/**").authenticated()
+                                                .requestMatchers(ApiConstant.PAYMENT_BASE + "/**").authenticated()
 
-                        .requestMatchers(ApiConstant.BOOKING_BASE + "/**").authenticated()
-                        .requestMatchers(ApiConstant.PARKING_BASE + "/**").authenticated()
-                        .requestMatchers(ApiConstant.PAYMENT_BASE + "/**").authenticated()
+                                                .anyRequest().authenticated())
+                                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-                        .anyRequest().permitAll()
-                )
+                return http.build();
+        }
 
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder(12);
+        }
 
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        @Bean
+        public UrlBasedCorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
 
-        return http.build();
-    }
+                configuration.setAllowedOrigins(List.of(
+                                "http://localhost:3000",
+                                "http://localhost:5173",
+                                "http://localhost:4200"));
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
-    }
+                configuration.setAllowedMethods(List.of(
+                                "GET",
+                                "POST",
+                                "PUT",
+                                "PATCH",
+                                "DELETE",
+                                "OPTIONS"));
 
-    @Bean
-    public UrlBasedCorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
+                configuration.setAllowedHeaders(List.of(
+                                "Authorization",
+                                "Content-Type",
+                                "Accept"));
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://localhost:4200"
-        ));
+                configuration.setAllowCredentials(true);
+                configuration.setMaxAge(3600L);
 
-        configuration.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
-        ));
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
 
-        configuration.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                "Accept"
-        ));
-
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-
-        return source;
-    }
+                return source;
+        }
 }

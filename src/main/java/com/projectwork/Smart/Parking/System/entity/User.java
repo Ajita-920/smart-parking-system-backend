@@ -2,15 +2,23 @@ package com.projectwork.Smart.Parking.System.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "users", indexes = {
@@ -36,15 +44,31 @@ public class User extends BaseEntity {
 
     @JsonIgnore
     @NotBlank(message = "Password is required")
-    @Size(min = 6, max = 50, message = "Password must be between 6 and 50 characters")
-    @Column(name = "password", nullable = false, length = 50)
+    @Column(name = "password", nullable = false, length = 255)
     private String password;
 
     @Pattern(regexp = "^[0-9+\\-\\s()]{7,20}$", message = "Phone number must be valid")
     @Column(name = "phone", length = 20)
     private String phone;
 
+    @NotNull(message = "Role is required")
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 10)
     private UserRole role = UserRole.DRIVER;
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeFields() {
+        if (email != null) {
+            email = email.trim().toLowerCase();
+        }
+
+        if (name != null) {
+            name = name.trim();
+        }
+
+        if (phone != null) {
+            phone = phone.trim();
+        }
+    }
 }
