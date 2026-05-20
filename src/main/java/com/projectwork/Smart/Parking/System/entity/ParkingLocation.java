@@ -31,6 +31,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ParkingLocation extends BaseEntity {
 
+    private static final double DEFAULT_TWO_WHEELER_RATE = 50.0;
+    private static final double DEFAULT_FOUR_WHEELER_RATE = 100.0;
+
     @NotBlank(message = "Parking location name is required.")
     @Size(min = 2, max = 100, message = "Parking location name must be between 2 and 100 characters.")
     @Column(name = "name", nullable = false, length = 100)
@@ -73,32 +76,60 @@ public class ParkingLocation extends BaseEntity {
     @Column(name = "available_two_wheeler_slots", nullable = false)
     private Integer availableTwoWheelerSlots;
 
+    @DecimalMin(value = "0.0", inclusive = false, message = "Two-wheeler rate must be greater than zero.")
+    @Column(name = "two_wheeler_rate_per_hour")
+    private Double twoWheelerRatePerHour = DEFAULT_TWO_WHEELER_RATE;
+
+    @DecimalMin(value = "0.0", inclusive = false, message = "Four-wheeler rate must be greater than zero.")
+    @Column(name = "four_wheeler_rate_per_hour")
+    private Double fourWheelerRatePerHour = DEFAULT_FOUR_WHEELER_RATE;
+
     @NotNull(message = "Vendor is required.")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vendor_id", nullable = false)
     private User vendor;
 
     public Integer getTotalSlots() {
-        return totalFourWheelerSlots + totalTwoWheelerSlots;
+        int fourWheeler = totalFourWheelerSlots != null ? totalFourWheelerSlots : 0;
+        int twoWheeler = totalTwoWheelerSlots != null ? totalTwoWheelerSlots : 0;
+        return fourWheeler + twoWheeler;
     }
 
     public Integer getAvailableSlots() {
-        return availableFourWheelerSlots + availableTwoWheelerSlots;
+        int fourWheeler = availableFourWheelerSlots != null ? availableFourWheelerSlots : 0;
+        int twoWheeler = availableTwoWheelerSlots != null ? availableTwoWheelerSlots : 0;
+        return fourWheeler + twoWheeler;
     }
 
     @PrePersist
     @PreUpdate
     private void validateSlots() {
-        if (availableFourWheelerSlots != null &&
-                totalFourWheelerSlots != null &&
-                availableFourWheelerSlots > totalFourWheelerSlots) {
+        if (availableFourWheelerSlots == null && totalFourWheelerSlots != null) {
+            availableFourWheelerSlots = totalFourWheelerSlots;
+        }
+
+        if (availableTwoWheelerSlots == null && totalTwoWheelerSlots != null) {
+            availableTwoWheelerSlots = totalTwoWheelerSlots;
+        }
+
+        if (twoWheelerRatePerHour == null) {
+            twoWheelerRatePerHour = DEFAULT_TWO_WHEELER_RATE;
+        }
+
+        if (fourWheelerRatePerHour == null) {
+            fourWheelerRatePerHour = DEFAULT_FOUR_WHEELER_RATE;
+        }
+
+        if (availableFourWheelerSlots != null
+                && totalFourWheelerSlots != null
+                && availableFourWheelerSlots > totalFourWheelerSlots) {
             throw new IllegalArgumentException(
                     "Available four-wheeler slots cannot be greater than total four-wheeler slots.");
         }
 
-        if (availableTwoWheelerSlots != null &&
-                totalTwoWheelerSlots != null &&
-                availableTwoWheelerSlots > totalTwoWheelerSlots) {
+        if (availableTwoWheelerSlots != null
+                && totalTwoWheelerSlots != null
+                && availableTwoWheelerSlots > totalTwoWheelerSlots) {
             throw new IllegalArgumentException(
                     "Available two-wheeler slots cannot be greater than total two-wheeler slots.");
         }

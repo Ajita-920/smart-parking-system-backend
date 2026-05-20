@@ -28,7 +28,8 @@ import java.time.Instant;
         @Index(name = "idx_payments_transaction_id", columnList = "transaction_id"),
         @Index(name = "idx_payments_status", columnList = "status"),
         @Index(name = "idx_payments_payment_method", columnList = "payment_method"),
-        @Index(name = "idx_payments_pidx", columnList = "pidx")
+        @Index(name = "idx_payments_pidx", columnList = "pidx"),
+        @Index(name = "idx_payments_refund_status", columnList = "refund_status")
 })
 @Getter
 @Setter
@@ -67,6 +68,20 @@ public class Payment extends BaseEntity {
     @Column(name = "paid_at")
     private Instant paidAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "refund_status", nullable = false, length = 30)
+    private RefundStatus refundStatus = RefundStatus.NONE;
+
+    @DecimalMin(value = "0.0", inclusive = true, message = "Refund amount cannot be negative.")
+    @Column(name = "refund_amount", precision = 10, scale = 2)
+    private BigDecimal refundAmount = BigDecimal.ZERO;
+
+    @Column(name = "refund_requested_at")
+    private Instant refundRequestedAt;
+
+    @Column(name = "refunded_at")
+    private Instant refundedAt;
+
     @Size(max = 1000, message = "Payment URL must not exceed 1000 characters.")
     @Column(name = "payment_url", length = 1000)
     private String paymentUrl;
@@ -76,6 +91,14 @@ public class Payment extends BaseEntity {
     private void beforeSave() {
         if (status == null) {
             status = PaymentStatus.PENDING;
+        }
+
+        if (refundStatus == null) {
+            refundStatus = RefundStatus.NONE;
+        }
+
+        if (refundAmount == null) {
+            refundAmount = BigDecimal.ZERO;
         }
 
         if (status == PaymentStatus.SUCCESS && paidAt == null) {
@@ -95,8 +118,20 @@ public class Payment extends BaseEntity {
         return status == PaymentStatus.FAILED;
     }
 
-    public boolean isRefunded() {
-        return status == PaymentStatus.REFUNDED;
+    public boolean hasNoRefund() {
+        return refundStatus == RefundStatus.NONE;
+    }
+
+    public boolean isRefundPending() {
+        return refundStatus == RefundStatus.PENDING;
+    }
+
+    public boolean isRefundCompleted() {
+        return refundStatus == RefundStatus.COMPLETED;
+    }
+
+    public boolean isRefundFailed() {
+        return refundStatus == RefundStatus.FAILED;
     }
 
     public void markSuccess() {
@@ -108,7 +143,18 @@ public class Payment extends BaseEntity {
         this.status = PaymentStatus.FAILED;
     }
 
-    public void markRefunded() {
-        this.status = PaymentStatus.REFUNDED;
+    public void markRefundPending(BigDecimal amount) {
+        this.refundStatus = RefundStatus.PENDING;
+        this.refundAmount = amount != null ? amount : BigDecimal.ZERO;
+        this.refundRequestedAt = Instant.now();
+    }
+
+    public void markRefundCompleted() {
+        this.refundStatus = RefundStatus.COMPLETED;
+        this.refundedAt = Instant.now();
+    }
+
+    public void markRefundFailed() {
+        this.refundStatus = RefundStatus.FAILED;
     }
 }

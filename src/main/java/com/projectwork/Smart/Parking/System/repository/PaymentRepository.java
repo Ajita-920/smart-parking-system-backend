@@ -18,6 +18,10 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     Optional<Payment> findByTransactionIdAndDeletedAtIsNull(String transactionId);
 
+    Optional<Payment> findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(
+            UUID bookingId,
+            PaymentStatus status);
+
     List<Payment> findByBookingAndDeletedAtIsNull(Booking booking);
 
     List<Payment> findByBooking_IdAndDeletedAtIsNull(UUID bookingId);

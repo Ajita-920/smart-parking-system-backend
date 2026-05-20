@@ -38,25 +38,33 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                                                .requestMatchers(HttpMethod.POST,
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
                                                                 ApiConstant.AUTH_BASE + ApiConstant.AUTH_REGISTER)
                                                 .permitAll()
-                                                .requestMatchers(HttpMethod.POST,
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
                                                                 ApiConstant.AUTH_BASE + ApiConstant.AUTH_LOGIN)
                                                 .permitAll()
-                                                .requestMatchers(HttpMethod.POST,
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
                                                                 ApiConstant.AUTH_BASE + ApiConstant.AUTH_REFRESH)
                                                 .permitAll()
+
                                                 .requestMatchers(ApiConstant.HEALTH_BASE).permitAll()
-                                                .requestMatchers(HttpMethod.GET,
+
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
                                                                 ApiConstant.PAYMENT_BASE
                                                                                 + ApiConstant.PAYMENT_KHALTI_VERIFY)
                                                 .permitAll()
 
-                                                .requestMatchers(HttpMethod.POST,
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
                                                                 ApiConstant.AUTH_BASE + ApiConstant.AUTH_LOGOUT)
                                                 .authenticated()
-                                                .requestMatchers(HttpMethod.POST,
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
                                                                 ApiConstant.AUTH_BASE + ApiConstant.AUTH_LOGOUT_ALL)
                                                 .authenticated()
 

@@ -24,6 +24,9 @@ public class ParkingLocationResponseDto {
     private Integer totalSlots;
     private Integer availableSlots;
 
+    private Double twoWheelerRatePerHour;
+    private Double fourWheelerRatePerHour;
+
     private Double distance;
 
     private UUID vendorId;

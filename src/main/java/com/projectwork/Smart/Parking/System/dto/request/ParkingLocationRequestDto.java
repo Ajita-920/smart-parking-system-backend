@@ -36,4 +36,10 @@ public class ParkingLocationRequestDto {
     @NotNull(message = "Total two-wheeler slots is required.")
     @Min(value = 0, message = "Total two-wheeler slots cannot be negative.")
     private Integer totalTwoWheelerSlots;
+
+    @DecimalMin(value = "0.0", inclusive = false, message = "Two-wheeler rate must be greater than zero.")
+    private Double twoWheelerRatePerHour;
+
+    @DecimalMin(value = "0.0", inclusive = false, message = "Four-wheeler rate must be greater than zero.")
+    private Double fourWheelerRatePerHour;
 }

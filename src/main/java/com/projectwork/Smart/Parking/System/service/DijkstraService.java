@@ -17,14 +17,14 @@ import java.util.stream.Collectors;
 public class DijkstraService {
 
     private static final int DEFAULT_MAX_SPOTS = 5;
+    private static final int DEFAULT_GPS_MAX_SPOTS = 20;
 
     private final ParkingLocationRepository parkingLocationRepository;
     private final GraphService graphService;
 
     public DijkstraService(
             ParkingLocationRepository parkingLocationRepository,
-            GraphService graphService
-    ) {
+            GraphService graphService) {
         this.parkingLocationRepository = parkingLocationRepository;
         this.graphService = graphService;
     }
@@ -32,8 +32,7 @@ public class DijkstraService {
     public List<ParkingLocationResponseDto> findClosestInThamel(
             double userLat,
             double userLon,
-            Integer maxSpots
-    ) {
+            Integer maxSpots) {
         int limit = maxSpots != null && maxSpots > 0 ? maxSpots : DEFAULT_MAX_SPOTS;
 
         List<ParkingLocation> availableLocations = parkingLocationRepository.findByDeletedAtIsNull()
@@ -47,7 +46,6 @@ public class DijkstraService {
         }
 
         Node userNode = findNearestGraphNode(userLat, userLon);
-
         Map<Node, Double> distances = dijkstra(userNode, graphService.getGraph());
 
         return availableLocations.stream()
@@ -65,6 +63,37 @@ public class DijkstraService {
                 .collect(Collectors.toList());
     }
 
+    public List<ParkingLocationResponseDto> findClosestByGps(
+            double userLat,
+            double userLon,
+            Integer maxSpots) {
+        int limit = maxSpots != null && maxSpots > 0 ? maxSpots : DEFAULT_GPS_MAX_SPOTS;
+
+        List<ParkingLocation> availableLocations = parkingLocationRepository.findByDeletedAtIsNull()
+                .stream()
+                .filter(location -> location.getAvailableSlots() != null && location.getAvailableSlots() > 0)
+                .toList();
+
+        if (availableLocations.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return availableLocations.stream()
+                .map(location -> {
+                    ParkingLocationResponseDto dto = mapToDto(location);
+                    double distanceKm = haversine(
+                            userLat,
+                            userLon,
+                            location.getLatitude(),
+                            location.getLongitude());
+                    dto.setDistance(Math.round(distanceKm * 100.0) / 100.0);
+                    return dto;
+                })
+                .sorted(Comparator.comparingDouble(ParkingLocationResponseDto::getDistance))
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
     public ParkingLocationResponseDto findNearestParking(double latitude, double longitude) {
         List<ParkingLocationResponseDto> closestLocations = findClosestInThamel(latitude, longitude, 1);
         return closestLocations.isEmpty() ? null : closestLocations.get(0);
@@ -74,7 +103,6 @@ public class DijkstraService {
         ParkingLocationResponseDto dto = new ParkingLocationResponseDto();
 
         dto.setId(location.getId());
-
         dto.setName(location.getName());
         dto.setAddress(location.getAddress());
 
@@ -90,6 +118,9 @@ public class DijkstraService {
         dto.setTotalSlots(location.getTotalSlots());
         dto.setAvailableSlots(location.getAvailableSlots());
 
+        dto.setTwoWheelerRatePerHour(location.getTwoWheelerRatePerHour());
+        dto.setFourWheelerRatePerHour(location.getFourWheelerRatePerHour());
+
         if (location.getVendor() != null) {
             dto.setVendorId(location.getVendor().getId());
             dto.setVendorName(location.getVendor().getName());
@@ -101,8 +132,7 @@ public class DijkstraService {
     private Map<Node, Double> dijkstra(Node source, Map<Node, List<Edge>> graph) {
         Map<Node, Double> distances = new HashMap<>();
         PriorityQueue<NodeDistance> priorityQueue = new PriorityQueue<>(
-                Comparator.comparingDouble(nodeDistance -> nodeDistance.distance)
-        );
+                Comparator.comparingDouble(nodeDistance -> nodeDistance.distance));
 
         for (Node node : graph.keySet()) {
             distances.put(node, Double.MAX_VALUE);
@@ -135,8 +165,7 @@ public class DijkstraService {
                 .keySet()
                 .stream()
                 .min(Comparator.comparingDouble(
-                        node -> haversine(latitude, longitude, node.lat, node.lon)
-                ))
+                        node -> haversine(latitude, longitude, node.lat, node.lon)))
                 .orElseThrow(() -> new IllegalStateException("Graph has no nodes."));
     }
 
@@ -148,9 +177,9 @@ public class DijkstraService {
 
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(Math.toRadians(lat1))
-                * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2)
-                * Math.sin(dLon / 2);
+                        * Math.cos(Math.toRadians(lat2))
+                        * Math.sin(dLon / 2)
+                        * Math.sin(dLon / 2);
 
         return earthRadiusInKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }

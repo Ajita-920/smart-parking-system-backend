@@ -16,6 +16,9 @@ public class BookingRequestDto {
     @NotNull(message = "Parking location ID is required.")
     private UUID parkingLocationId;
 
+    @NotNull(message = "Parking slot ID is required.")
+    private UUID slotId;
+
     @NotBlank(message = "Vehicle type is required.")
     @Pattern(regexp = "^(?i)(TWO_WHEELER|FOUR_WHEELER)$", message = "Vehicle type must be one of: TWO_WHEELER, FOUR_WHEELER.")
     private String vehicleType;

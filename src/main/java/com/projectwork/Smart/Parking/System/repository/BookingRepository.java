@@ -16,56 +16,62 @@ import java.util.UUID;
 
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
-    Optional<Booking> findByIdAndDeletedAtIsNull(UUID id);
+        Optional<Booking> findByIdAndDeletedAtIsNull(UUID id);
 
-    List<Booking> findByDriverAndDeletedAtIsNull(User driver);
+        Optional<Booking> findByIdAndDriverAndDeletedAtIsNull(UUID id, User driver);
 
-    List<Booking> findByDriver_IdAndDeletedAtIsNull(UUID driverId);
+        List<Booking> findByDriverAndDeletedAtIsNull(User driver);
 
-    List<Booking> findByParkingLocationAndDeletedAtIsNull(ParkingLocation parkingLocation);
+        List<Booking> findByDriver_IdAndDeletedAtIsNull(UUID driverId);
 
-    List<Booking> findByParkingLocation_IdAndDeletedAtIsNull(UUID locationId);
+        List<Booking> findByParkingLocationAndDeletedAtIsNull(ParkingLocation parkingLocation);
 
-    List<Booking> findByParkingLocation_Vendor_IdAndDeletedAtIsNull(UUID vendorId);
+        List<Booking> findByParkingLocation_IdAndDeletedAtIsNull(UUID locationId);
 
-    List<Booking> findBySlotAndDeletedAtIsNull(ParkingSlot slot);
+        List<Booking> findByParkingLocation_Vendor_IdAndDeletedAtIsNull(UUID vendorId);
 
-    List<Booking> findBySlot_IdAndDeletedAtIsNull(UUID slotId);
+        List<Booking> findBySlotAndDeletedAtIsNull(ParkingSlot slot);
 
-    List<Booking> findByStatusAndDeletedAtIsNull(BookingStatus status);
+        List<Booking> findBySlot_IdAndDeletedAtIsNull(UUID slotId);
 
-    List<Booking> findByDeletedAtIsNull();
+        List<Booking> findByStatusAndDeletedAtIsNull(BookingStatus status);
 
-    long countByDeletedAtIsNull();
+        List<Booking> findByDeletedAtIsNull();
 
-    long countByDriverAndDeletedAtIsNull(User driver);
+        long countByDeletedAtIsNull();
 
-    long countByDriver_IdAndDeletedAtIsNull(UUID driverId);
+        long countByDriverAndDeletedAtIsNull(User driver);
 
-    long countByParkingLocationAndDeletedAtIsNull(ParkingLocation parkingLocation);
+        long countByDriver_IdAndDeletedAtIsNull(UUID driverId);
 
-    long countByParkingLocation_IdAndDeletedAtIsNull(UUID locationId);
+        long countByParkingLocationAndDeletedAtIsNull(ParkingLocation parkingLocation);
 
-    long countByParkingLocation_Vendor_IdAndDeletedAtIsNull(UUID vendorId);
+        long countByParkingLocation_IdAndDeletedAtIsNull(UUID locationId);
 
-    @Query("""
-            SELECT b FROM Booking b
-            WHERE b.parkingLocation.id = :locationId
-              AND b.status = :status
-              AND b.deletedAt IS NULL
-              AND b.startTime < :endTime
-              AND b.endTime > :startTime
-            """)
-    List<Booking> findOverlappingBookings(
-            @Param("locationId") UUID locationId,
-            @Param("status") BookingStatus status,
-            @Param("startTime") LocalDateTime startTime,
-            @Param("endTime") LocalDateTime endTime);
+        long countByParkingLocation_Vendor_IdAndDeletedAtIsNull(UUID vendorId);
 
-    default List<Booking> findOverlappingConfirmedBookings(
-            UUID locationId,
-            LocalDateTime startTime,
-            LocalDateTime endTime) {
-        return findOverlappingBookings(locationId, BookingStatus.CONFIRMED, startTime, endTime);
-    }
+        @Query("""
+                        SELECT b FROM Booking b
+                        WHERE b.parkingLocation.id = :locationId
+                          AND b.status = :status
+                          AND b.deletedAt IS NULL
+                          AND b.startTime < :endTime
+                          AND b.endTime > :startTime
+                        """)
+        List<Booking> findOverlappingBookings(
+                        @Param("locationId") UUID locationId,
+                        @Param("status") BookingStatus status,
+                        @Param("startTime") LocalDateTime startTime,
+                        @Param("endTime") LocalDateTime endTime);
+
+        default List<Booking> findOverlappingConfirmedBookings(
+                        UUID locationId,
+                        LocalDateTime startTime,
+                        LocalDateTime endTime) {
+                return findOverlappingBookings(
+                                locationId,
+                                BookingStatus.CONFIRMED,
+                                startTime,
+                                endTime);
+        }
 }

@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -50,6 +51,13 @@ public class Booking extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id", nullable = false)
     private ParkingLocation parkingLocation;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vehicle_type", length = 30)
+    private VehicleType vehicleType;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
 
     @NotNull(message = "Start time is required.")
     @Column(name = "start_time", nullable = false)
@@ -87,6 +95,10 @@ public class Booking extends BaseEntity {
         if (parkingLocation == null && slot != null) {
             parkingLocation = slot.getLocation();
         }
+
+        if (vehicleType == null && slot != null) {
+            vehicleType = slot.getVehicleType();
+        }
     }
 
     public boolean isConfirmed() {
@@ -115,6 +127,7 @@ public class Booking extends BaseEntity {
 
     public void markCancelled() {
         this.status = BookingStatus.CANCELLED;
+        this.cancelledAt = Instant.now();
     }
 
     public void markCompleted() {

@@ -45,8 +45,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     public PaymentServiceImpl(
             BookingRepository bookingRepository,
-            PaymentRepository paymentRepository
-    ) {
+            PaymentRepository paymentRepository) {
         this.bookingRepository = bookingRepository;
         this.paymentRepository = paymentRepository;
         this.restClient = RestClient.create();
@@ -61,23 +60,20 @@ public class PaymentServiceImpl implements PaymentService {
         if (paymentMethod != PaymentMethod.KHALTI) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "This endpoint only supports KHALTI payment."
-            );
+                    "This endpoint only supports KHALTI payment.");
         }
 
         Booking booking = bookingRepository.findByIdAndDeletedAtIsNull(request.getBookingId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Booking not found."
-                ));
+                        "Booking not found."));
 
         BigDecimal amount = booking.getTotalAmount();
 
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Invalid booking amount."
-            );
+                    "Invalid booking amount.");
         }
 
         Payment payment = new Payment();
@@ -99,8 +95,7 @@ public class PaymentServiceImpl implements PaymentService {
                 "website_url", websiteUrl,
                 "amount", amountInPaisa,
                 "purchase_order_id", savedPayment.getTransactionId(),
-                "purchase_order_name", "Parking Booking #" + booking.getId()
-        );
+                "purchase_order_name", "Parking Booking #" + booking.getId());
 
         Map<String, Object> khaltiResponse = restClient.post()
                 .uri(khaltiInitiateUrl)
@@ -113,8 +108,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (khaltiResponse == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
-                    "No response received from Khalti."
-            );
+                    "No response received from Khalti.");
         }
 
         String paymentUrl = (String) khaltiResponse.get("payment_url");
@@ -149,22 +143,21 @@ public class PaymentServiceImpl implements PaymentService {
         if (khaltiResponse == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
-                    "No response received from Khalti during verification."
-            );
+                    "No response received from Khalti during verification.");
         }
 
         Payment payment = paymentRepository.findByPidxAndDeletedAtIsNull(pidx)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Payment not found for this pidx."
-                ));
+                        "Payment not found for this pidx."));
 
         String khaltiStatus = String.valueOf(khaltiResponse.get("status"));
 
-        if ("Completed".equalsIgnoreCase(khaltiStatus) || "SUCCESS".equalsIgnoreCase(khaltiStatus)) {
+        if ("Completed".equalsIgnoreCase(khaltiStatus)
+                || "SUCCESS".equalsIgnoreCase(khaltiStatus)) {
             payment.markSuccess();
         } else if ("Refunded".equalsIgnoreCase(khaltiStatus)) {
-            payment.markRefunded();
+            payment.markRefundCompleted();
         } else if ("Failed".equalsIgnoreCase(khaltiStatus)
                 || "Expired".equalsIgnoreCase(khaltiStatus)
                 || "User canceled".equalsIgnoreCase(khaltiStatus)) {
@@ -192,8 +185,7 @@ public class PaymentServiceImpl implements PaymentService {
         return paymentRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Payment not found."
-                ));
+                        "Payment not found."));
     }
 
     private PaymentResponseDto mapToResponse(Payment payment) {
@@ -218,8 +210,7 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Invalid payment method. Allowed values: CASH, KHALTI, ESEWA."
-            );
+                    "Invalid payment method. Allowed values: CASH, KHALTI, ESEWA.");
         }
     }
 

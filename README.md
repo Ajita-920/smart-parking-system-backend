@@ -1,768 +1,494 @@
 # Smart Parking System Backend
 
-This project is the backend implementation of a Smart Parking System built using Spring Boot.  
-It provides REST APIs for managing parking slots, vehicle entry and exit, and parking records.
+Backend API for the Smart Parking System project. It is built with Spring Boot and provides role-based REST APIs for drivers, vendors, and admins to manage parking discovery, bookings, slot availability, payments, user profiles, and dashboards.
 
-## Technologies Used
+## Current Stack
 
-- Java
-- Spring Boot
-- Spring Data JPA
-- MySQL/PostgreSQL
-- Maven
-- Git & GitHub
+- Java 21
+- Spring Boot 4.0.3
+- Spring Web
+- Spring Security with JWT
+- Spring Data JPA / Hibernate
+- PostgreSQL
+- Maven wrapper
+- Lombok
+- Dotenv Java
+- Khalti e-payment integration
+- Docker / Docker Compose support
+
+## Main Features
+
+- Driver and vendor registration
+- JWT access tokens and refresh tokens
+- Refresh token rotation
+- Logout and logout from all devices
+- Access token blacklisting on logout
+- BCrypt password hashing
+- Role-based authorization for `DRIVER`, `VENDOR`, and `ADMIN`
+- User profile viewing and updating
+- Password change from profile update
+- Vendor parking location CRUD
+- Automatic parking slot creation when a vendor creates a location
+- Separate two-wheeler and four-wheeler slot counts
+- Available slot updates per vehicle type
+- Parking search by area and availability
+- Nearby and nearest parking lookup
+- Thamel-focused road-distance search using Dijkstra
+- GPS-distance based parking search
+- Driver booking creation
+- Vehicle-type aware slot reservation
+- Booking amount calculation using hourly parking rates
+- Driver booking history
+- Booking lookup with permission checks
+- Booking cancellation
+- Vendor booking check-in and completion through one status route
+- Refund eligibility handling for cancellations more than 1 hour before start time
+- Khalti payment initiation
+- Khalti payment verification callback
+- Vendor dashboard with location and slot summaries
+- Admin dashboard with user and booking stats
+- Admin booking listing
+- Admin user listing with optional role filter
+- Soft-delete support through `deleted_at`
+- Unified API response wrapper
+- Health endpoint and Spring Actuator health exposure
+- Seed users for local development
 
 ## Project Structure
 
-```
+```text
 src/main/java/com/projectwork/Smart/Parking/System/
-├── controller/     Handles REST API requests
-├── service/        Contains business logic
-├── repository/     Handles database operations
-├── entity/         Defines database tables
-└── dto/            Transfers data between layers
-    ├── request/    Incoming request payloads
-    └── response/   Outgoing response payloads
+├── config/         API constants, seed data, app configuration
+├── controller/     REST controllers
+├── dto/            Request and response DTOs
+├── entity/         JPA entities and enums
+├── exception/      Global exception handling
+├── repository/     Spring Data repositories
+├── security/       JWT, security filter, user details service
+└── service/        Business logic
 ```
 
-## Features
+## Requirements
 
-- User registration and authentication (JWT)
-- Role-based access control (DRIVER, VENDOR, ADMIN)
-- View and search nearby parking locations
-- Book a parking slot
-- Parking fee calculation
-- Khalti payment gateway integration
-- Vendor dashboard for managing parking locations
-- Admin dashboard for system overview
+- Java 21
+- Maven is optional because the project includes `mvnw`
+- PostgreSQL 16 or compatible
+- Docker Desktop, optional
 
----
+## Environment Variables
 
-## Common Response Wrapper
+Create or update `smart-parking-system-backend/.env`:
 
-All endpoints return a unified `ApiResponse<T>` envelope:
+```env
+DB_URL=jdbc:postgresql://localhost:5432/smart_parking
+DB_USERNAME=postgres
+DB_PASSWORD=your_database_password
 
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "Success",
-  "timestamp": "2024-01-15T10:30:00",
-  "data": { }
-}
+JWT_SECRET=replace_with_a_long_random_secret_at_least_32_characters
+
+APP_WEBSITE_URL=http://localhost:8080
+KHALTI_RETURN_URL=http://localhost:8080/api/payments/khalti/verify
 ```
 
----
+Notes:
+
+- `application.yml` reads database values from `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD`.
+- Keep `JWT_SECRET` long and private. HS256 signing needs a sufficiently long secret.
+- Khalti URLs are configured for Khalti development endpoints.
+- The current Khalti secret key is configured in `application.yml`; move it to an environment variable before production use.
+
+## Local Setup
+
+1. Go to the backend folder:
+
+   ```bash
+   cd smart-parking-system-backend
+   ```
+
+2. Create the PostgreSQL database:
+
+   ```sql
+   CREATE DATABASE smart_parking;
+   ```
+
+3. Configure `.env` using the template above.
+
+4. Start the backend:
+
+   ```bash
+   ./mvnw spring-boot:run
+   ```
+
+5. Check the API:
+
+   ```bash
+   curl http://localhost:8080/api/health
+   ```
+
+The API runs on `http://localhost:8080` by default.
+
+## Docker Setup
+
+For backend development with PostgreSQL:
+
+```bash
+cd smart-parking-system-backend
+docker compose -f docker-compose-dev.yml up --build
+```
+
+The development compose file starts:
+
+- Backend on `http://localhost:8080`
+- PostgreSQL on `localhost:5432`
+- A Maven cache volume for faster rebuilds
+
+If the external Docker network does not exist yet, create it first:
+
+```bash
+docker network create smart-parking-dev-network
+```
+
+## Build and Test
+
+```bash
+cd smart-parking-system-backend
+./mvnw clean package
+./mvnw test
+```
+
+Build without running tests:
+
+```bash
+./mvnw clean package -DskipTests
+```
+
+## Seed Users
+
+On startup, the app creates these users if they do not already exist:
+
+| Role | Email | Password |
+| --- | --- | --- |
+| ADMIN | `admin@parking.com` | `Admin@123` |
+| VENDOR | `vendor@parking.com` | `Vendor@123` |
+| DRIVER | `driver@parking.com` | `Driver@123` |
+
+Use these only for local development.
 
 ## Authentication
 
-Most endpoints require a JWT Bearer token obtained from `/api/auth/login`.
+Public endpoints:
 
-**Header format:**
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `GET /api/health`
+- `GET /api/payments/khalti/verify`
+
+Protected endpoints require:
+
+```http
+Authorization: Bearer <accessToken>
 ```
-Authorization: Bearer <jwt_token>
-```
 
----
+Login and registration return:
 
-## API Endpoints
-
----
-
-### Health — `/api/health`
-
-#### `GET /api/health`
-Check if the service is running. No authentication required.
-
-**Response `200`:**
 ```json
 {
-  "responseCode": 200,
-  "responseMessage": "Service is running",
-  "timestamp": "2024-01-15T10:00:00",
-  "data": {
-    "status": "UP",
-    "service": "Smart Parking System",
-    "timestamp": "2024-01-15T10:00:00"
-  }
+  "accessToken": "jwt-token",
+  "refreshToken": "refresh-token",
+  "tokenType": "Bearer",
+  "expiresIn": 900,
+  "userId": "uuid",
+  "name": "Driver One",
+  "email": "driver@parking.com",
+  "role": "DRIVER"
 }
 ```
 
----
+## Common Response Format
 
-### Auth — `/api/auth`
+All controllers return an `ApiResponse<T>` wrapper:
 
-#### `POST /api/auth/register`
-Register a new user account.
-
-**Headers:**
+```json
+{
+  "responseCode": 200,
+  "responseMessage": "Success message",
+  "timestamp": "2026-05-20T10:30:00",
+  "data": {}
+}
 ```
-Content-Type: application/json
-```
 
-**Request Body:**
+## API Endpoints
+
+### Health
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/api/health` | Public | Service health check |
+
+### Auth
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/auth/register` | Public | Register a `DRIVER` or `VENDOR` |
+| POST | `/api/auth/login` | Public | Login and receive access and refresh tokens |
+| POST | `/api/auth/refresh` | Public | Rotate refresh token and receive a new access token |
+| POST | `/api/auth/logout` | Authenticated | Blacklist current access token and revoke refresh token |
+| POST | `/api/auth/logout-all` | Authenticated | Revoke all refresh tokens for the current user |
+
+Register body:
+
 ```json
 {
   "name": "John Doe",
   "email": "john@example.com",
-  "password": "secret123",
+  "password": "Password@123",
   "phone": "9800000000",
   "role": "DRIVER"
 }
 ```
-> `role` must be one of: `DRIVER`, `VENDOR`, `ADMIN`
 
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "User registered successfully",
-  "timestamp": "2024-01-15T10:00:00",
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiJ9...",
-    "type": "Bearer",
-    "userId": 1,
-    "name": "John Doe",
-    "email": "john@example.com",
-    "role": "DRIVER"
-  }
-}
-```
+Login body:
 
----
-
-#### `POST /api/auth/login`
-Authenticate and receive a JWT token.
-
-**Headers:**
-```
-Content-Type: application/json
-```
-
-**Request Body:**
 ```json
 {
   "email": "john@example.com",
-  "password": "secret123"
+  "password": "Password@123"
 }
 ```
 
-**Response `200`:**
+Refresh body:
+
 ```json
 {
-  "responseCode": 200,
-  "responseMessage": "Login successful",
-  "timestamp": "2024-01-15T10:05:00",
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiJ9...",
-    "type": "Bearer",
-    "userId": 1,
-    "name": "John Doe",
-    "email": "john@example.com",
-    "role": "DRIVER"
-  }
+  "refreshToken": "refresh-token"
 }
 ```
 
----
+Logout body:
 
-### Parking Locations — `/api/parking-locations`
-> Requires: `Authorization: Bearer <token>`
-
-#### `GET /api/parking-locations/nearby`
-Find the closest parking spots near a given coordinate in Thamel.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Query Parameters:**
-
-| Parameter  | Type   | Required | Default | Description               |
-|------------|--------|----------|---------|---------------------------|
-| latitude   | double | Yes      | —       | User's current latitude   |
-| longitude  | double | Yes      | —       | User's current longitude  |
-| limit      | int    | No       | 5       | Maximum results to return |
-| area       | String | No       | thamel  | Supported area filter     |
-
-**Example Request:**
-```
-GET /api/parking-locations/nearby?latitude=27.7172&longitude=85.3240&limit=3
-```
-
-**Response `200`:**
 ```json
 {
-  "responseCode": 200,
-  "responseMessage": "Nearby parking spots fetched",
-  "timestamp": "2024-01-15T10:10:00",
-  "data": [
-    {
-      "id": 1,
-      "name": "Thamel Parking A",
-      "address": "Thamel, Kathmandu",
-      "latitude": 27.7180,
-      "longitude": 85.3245,
-      "availableSlots": 10,
-      "distance": 0.12,
-      "vendorName": "Vendor One"
-    }
-  ]
+  "refreshToken": "refresh-token"
 }
 ```
 
----
+### Users
 
-#### `GET /api/parking-locations/nearest`
-Find the single nearest parking spot.
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/api/users/myDetail` | Authenticated | Get current user profile |
+| PUT | `/api/users/update/profile` | Authenticated | Update name, phone, or password |
 
-**Headers:**
-```
-Authorization: Bearer <token>
-```
+Profile update body:
 
-**Query Parameters:**
-
-| Parameter | Type   | Required | Description              |
-|-----------|--------|----------|--------------------------|
-| latitude  | double | Yes      | User's current latitude  |
-| longitude | double | Yes      | User's current longitude |
-
-**Example Request:**
-```
-GET /api/parking-locations/nearest?latitude=27.7172&longitude=85.3240
-```
-
-**Response `200`:**
 ```json
 {
-  "responseCode": 200,
-  "responseMessage": "Nearest parking spot found",
-  "timestamp": "2024-01-15T10:12:00",
-  "data": {
-    "id": 2,
-    "name": "Thamel Parking B",
-    "address": "Thamel Marg, Kathmandu",
-    "latitude": 27.7175,
-    "longitude": 85.3242,
-    "availableSlots": 5,
-    "distance": 0.04,
-    "vendorName": "Vendor Two"
-  }
+  "name": "Updated Name",
+  "phone": "9811111111",
+  "currentPassword": "OldPassword@123",
+  "newPassword": "NewPassword@123"
 }
 ```
 
----
+`currentPassword` is required only when changing password.
 
-#### `GET /api/parking-locations`
-Get all parking locations with available slots in Thamel.
+### Parking
 
-**Headers:**
-```
-Authorization: Bearer <token>
-```
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/api/parking?area=thamel&available=true` | Authenticated | List parking locations with optional area and availability filters |
+| GET | `/api/parking/nearby?lat=27.7172&lng=85.3240&limit=5` | Authenticated | Find nearby parking using Thamel road-distance logic |
+| GET | `/api/parking/nearest?lat=27.7172&lng=85.3240` | Authenticated | Find the nearest parking location |
+| GET | `/api/parking/nearby-gps?latitude=27.7172&longitude=85.3240&maxSpots=20` | Authenticated | Find closest parking by GPS distance |
+| GET | `/api/parking/thamel/closest?latitude=27.7172&longitude=85.3240&maxSpots=5` | Authenticated | Find closest available parking in Thamel |
+| GET | `/api/parking/thamel/nearest?latitude=27.7172&longitude=85.3240` | Authenticated | Find nearest available parking in Thamel |
+| GET | `/api/parking/mine` | VENDOR | List current vendor's parking locations |
+| POST | `/api/parking` | VENDOR | Create a parking location |
+| PUT | `/api/parking/{id}` | VENDOR | Update owned parking location details |
+| PATCH | `/api/parking/{id}/slots` | VENDOR | Update available slot counts |
+| DELETE | `/api/parking/{id}` | VENDOR | Soft-delete owned parking location |
 
-**Response `200`:**
+Create parking body:
+
 ```json
 {
-  "responseCode": 200,
-  "responseMessage": "Available parking slots fetched",
-  "timestamp": "2024-01-15T10:15:00",
-  "data": [
-    {
-      "id": 1,
-      "name": "Thamel Parking A",
-      "address": "Thamel, Kathmandu",
-      "latitude": 27.7180,
-      "longitude": 85.3245,
-      "availableSlots": 10,
-      "distance": 0.0,
-      "vendorName": "Vendor One"
-    },
-    {
-      "id": 3,
-      "name": "Thamel Parking C",
-      "address": "Chhetrapati, Kathmandu",
-      "latitude": 27.7165,
-      "longitude": 85.3233,
-      "availableSlots": 3,
-      "distance": 0.0,
-      "vendorName": "Vendor Three"
-    }
-  ]
+  "name": "Thamel Parking A",
+  "address": "Thamel, Kathmandu",
+  "latitude": 27.7172,
+  "longitude": 85.3240,
+  "totalFourWheelerSlots": 10,
+  "totalTwoWheelerSlots": 20,
+  "twoWheelerRatePerHour": 50,
+  "fourWheelerRatePerHour": 100
 }
 ```
 
----
+Update slots body:
 
-### Bookings — `/api/bookings`
-> Requires: `Authorization: Bearer <token>` (DRIVER role)
-
-#### `POST /api/bookings`
-Create a new parking booking.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Request Body:**
 ```json
 {
-  "parkingLocationId": 1,
-  "startTime": "2024-01-16T09:00:00",
-  "endTime": "2024-01-16T11:00:00"
+  "availableFourWheelerSlots": 8,
+  "availableTwoWheelerSlots": 15
 }
 ```
-> Both `startTime` and `endTime` must be in the future.
 
-**Response `200`:**
+### Bookings
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/bookings` | DRIVER | Create a booking |
+| GET | `/api/bookings/me` | Authenticated | Get current user's bookings |
+| GET | `/api/bookings/{id}` | Authenticated | Get a booking if the current user is allowed to view it |
+| PUT | `/api/bookings/{bookingId}/cancel` | DRIVER | Cancel a driver's booking |
+| GET | `/api/bookings/debug-user` | Public | Legacy debug endpoint |
+
+Booking body:
+
 ```json
 {
-  "responseCode": 200,
-  "responseMessage": "Booking created successfully",
-  "timestamp": "2024-01-15T10:20:00",
-  "data": {
-    "bookingId": 42,
-    "parkingName": "Thamel Parking A",
-    "status": "CONFIRMED",
-    "startTime": "2024-01-16T09:00:00",
-    "endTime": "2024-01-16T11:00:00",
-    "totalAmount": 150.0,
-    "message": "Slot booked successfully"
-  }
+  "parkingLocationId": "parking-location-uuid",
+  "slotId": "selected-slot-uuid",
+  "vehicleType": "FOUR_WHEELER",
+  "startTime": "2026-05-21T10:00:00",
+  "endTime": "2026-05-21T12:00:00"
 }
 ```
 
----
+Supported vehicle types:
 
-#### `GET /api/bookings/mine`
-Retrieve all bookings for the currently authenticated user.
+- `TWO_WHEELER`
+- `FOUR_WHEELER`
 
-**Headers:**
-```
-Authorization: Bearer <token>
-```
+Booking behavior:
 
-**Response `200`:**
+- Only drivers can create bookings.
+- The request must include the selected `slotId`.
+- The selected slot must belong to the parking location, match the requested vehicle type, and be available.
+- The system reserves the selected slot.
+- Available slot counts are decremented after booking.
+- Minimum billable duration is 1 hour.
+- Booking amount uses the location's vehicle-specific hourly rate.
+- Cancelling releases the reserved slot.
+- Refund is marked pending only when there is a successful payment and the booking starts more than 1 hour later.
+
+### Payments
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/payments/khalti/initiate` | Authenticated | Initiate Khalti payment for a booking |
+| GET | `/api/payments/khalti/verify?pidx=...` | Public | Verify Khalti payment callback |
+
+Payment initiation body:
+
 ```json
 {
-  "responseCode": 200,
-  "responseMessage": "Bookings fetched successfully",
-  "timestamp": "2024-01-15T10:25:00",
-  "data": [
-    {
-      "bookingId": 42,
-      "parkingName": "Thamel Parking A",
-      "status": "CONFIRMED",
-      "startTime": "2024-01-16T09:00:00",
-      "endTime": "2024-01-16T11:00:00",
-      "totalAmount": 150.0,
-      "message": null
-    }
-  ]
+  "bookingId": "booking-uuid",
+  "paymentMethod": "KHALTI"
 }
 ```
 
----
+The response includes `paymentUrl` and `pidx`. Redirect the user to `paymentUrl` to complete the payment.
 
-### Payment — `/api/payments`
+### Vendor
 
-#### `POST /api/payments/khalti/initiate`
-Initiate a payment for a booking.
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/api/vendors/dashboard` | VENDOR | Vendor summary with parking locations and slot counts |
+| PUT | `/api/vendors/bookings/{bookingId}/status` | VENDOR | Check in or complete a booking for the vendor's parking location |
 
-**Headers:**
-```
-Authorization: Bearer <token>
-Content-Type: application/json
-```
+Vendor booking status body:
 
-**Request Body:**
 ```json
 {
-  "bookingId": 42,
-  "paymentMethod": "ESEWA"
-}
-```
-> `paymentMethod` must be one of: `ESEWA`, `CASH`
-
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "Payment initiated",
-  "timestamp": "2024-01-15T10:30:00",
-  "data": {
-    "paymentId": 7,
-    "bookingId": 42,
-    "amount": 150.0,
-    "status": "PENDING",
-    "transactionId": "TXN20240115103000",
-    "PaymentUrl": "https://khalti.com/payment/...",
-    "paidAt": null,
-    "message": "Redirect user to PaymentUrl to complete payment",
-    "pidx": "abc123xyz"
-  }
+  "action": "CHECK_IN"
 }
 ```
 
----
+Supported actions:
 
-#### `GET /api/payments/khalti/verify`
-Verify a Khalti payment after the user completes payment on the gateway.
+- `CHECK_IN`: changes the assigned slot from `RESERVED` to `OCCUPIED`
+- `COMPLETE`: changes the booking to `COMPLETED`, changes the slot from `OCCUPIED` to `AVAILABLE`, and restores the available slot count
 
-**Headers:**
-```
-Authorization: Bearer <token>
-```
+### Admin
 
-**Query Parameters:**
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/api/admin/dashboard` | ADMIN | Platform totals for bookings, vendors, drivers, and admins |
+| GET | `/api/admin/bookings` | ADMIN | List all bookings |
+| GET | `/api/admin/users` | ADMIN | List all users |
+| GET | `/api/admin/users?role=DRIVER` | ADMIN | List users by role |
 
-| Parameter | Type   | Required | Description                |
-|-----------|--------|----------|----------------------------|
-| pidx      | String | Yes      | Payment index from Khalti  |
+Accepted role filters:
 
-**Example Request:**
-```
-GET /api/payments/khalti/verify?pidx=abc123xyz
-```
+- `ADMIN`
+- `VENDOR`
+- `DRIVER`
 
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "Payment verified successfully",
-  "timestamp": "2024-01-15T10:35:00",
-  "data": {
-    "paymentId": 7,
-    "bookingId": 42,
-    "amount": 150.0,
-    "status": "SUCCESS",
-    "transactionId": "TXN20240115103000",
-    "PaymentUrl": null,
-    "paidAt": "2024-01-15T10:34:00",
-    "message": "Payment completed",
-    "pidx": "abc123xyz"
-  }
-}
-```
+## Role Access Summary
 
----
+| Role | Main Permissions |
+| --- | --- |
+| DRIVER | Search parking, create bookings, view own bookings, cancel own bookings, initiate payments |
+| VENDOR | Manage own parking locations, update available slots, view vendor dashboard, view related bookings by ID, check in and complete bookings |
+| ADMIN | View dashboard stats, list users, list bookings, view bookings |
 
-### Parking Location Management — `/api/parking-locations`
-> Requires: `Authorization: Bearer <token>` (VENDOR role)
+## Useful cURL Examples
 
-#### `POST /api/parking-locations`
-Add a new parking location under the authenticated vendor.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "name": "Thamel Parking D",
-  "address": "Paknajol, Thamel, Kathmandu",
-  "latitude": 27.7190,
-  "longitude": 85.3250,
-  "totalSlots": 20,
-  "availableSlots": 20
-}
-```
-
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "Parking location added successfully",
-  "timestamp": "2024-01-15T10:40:00",
-  "data": {
-    "id": 5,
-    "name": "Thamel Parking D",
-    "address": "Paknajol, Thamel, Kathmandu",
-    "latitude": 27.7190,
-    "longitude": 85.3250,
-    "availableSlots": 20,
-    "distance": 0.0,
-    "vendorName": "John Vendor"
-  }
-}
-```
-
----
-
-#### `GET /api/parking-locations/mine`
-Get all parking locations owned by the authenticated vendor.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "Parking locations fetched",
-  "timestamp": "2024-01-15T10:45:00",
-  "data": [
-    {
-      "id": 5,
-      "name": "Thamel Parking D",
-      "address": "Paknajol, Thamel, Kathmandu",
-      "latitude": 27.7190,
-      "longitude": 85.3250,
-      "availableSlots": 18,
-      "distance": 0.0,
-      "vendorName": "John Vendor"
-    }
-  ]
-}
-```
-
----
-
-#### `PATCH /api/parking-locations/{id}/availability`
-Update the available slot count for a specific parking location.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Path Variables:**
-
-| Variable | Type | Description           |
-|----------|------|-----------------------|
-| id       | Long | Parking location ID   |
-
-**Query Parameters:**
-
-| Parameter       | Type    | Required | Description                    |
-|-----------------|---------|----------|--------------------------------|
-| availableSlots  | Integer | Yes      | New available slot count       |
-
-**Example Request:**
-```
-PATCH /api/parking-locations/5/availability?availableSlots=15
-```
-
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "Available slots updated",
-  "timestamp": "2024-01-15T10:50:00",
-  "data": {
-    "id": 5,
-    "availableSlots": 15,
-    "message": "Slots updated successfully"
-  }
-}
-```
-
----
-
-### Vendor — `/api/vendors`
-> Requires: `Authorization: Bearer <token>` (VENDOR role)
-
-#### `GET /api/vendors/me/dashboard`
-Get dashboard statistics for the authenticated vendor.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "Dashboard data fetched",
-  "timestamp": "2024-01-15T11:00:00",
-  "data": {
-    "totalParkingLocations": 2,
-    "totalSlots": 40,
-    "availableSlots": 25,
-    "occupiedSlots": 15,
-    "twoWheelerSlots": {
-      "total": 20,
-      "available": 13,
-      "occupied": 7
-    },
-    "fourWheelerSlots": {
-      "total": 20,
-      "available": 12,
-      "occupied": 8
-    },
-    "locations": [
-      {
-        "id": 5,
-        "name": "Thamel Parking D",
-        "totalSlots": 20,
-        "availableSlots": 15,
-        "occupiedSlots": 5,
-        "twoWheelerSlots": {
-          "total": 10,
-          "available": 8,
-          "occupied": 2
-        },
-        "fourWheelerSlots": {
-          "total": 10,
-          "available": 7,
-          "occupied": 3
-        }
-      }
-    ]
-  }
-}
-```
-
----
-
-### Admin — `/api/admin`
-> Requires: `Authorization: Bearer <token>` (ADMIN role)
-
-#### `GET /api/admin/bookings`
-Get all bookings across the system.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "All bookings fetched",
-  "timestamp": "2024-01-15T11:10:00",
-  "data": [
-    {
-      "id": 42,
-      "startTime": "2024-01-16T09:00:00",
-      "endTime": "2024-01-16T11:00:00",
-      "status": "CONFIRMED",
-      "totalAmount": 150.0
-    }
-  ]
-}
-```
-
----
-
-#### `GET /api/admin/vendors`
-Get all users with the VENDOR role.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "Vendors fetched",
-  "timestamp": "2024-01-15T11:15:00",
-  "data": [
-    {
-      "id": 3,
-      "name": "John Vendor",
-      "email": "vendor@example.com",
-      "phone": "9811111111",
-      "role": "VENDOR"
-    }
-  ]
-}
-```
-
----
-
-#### `GET /api/admin/drivers`
-Get all users with the DRIVER role.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "Drivers fetched",
-  "timestamp": "2024-01-15T11:20:00",
-  "data": [
-    {
-      "id": 1,
-      "name": "John Doe",
-      "email": "john@example.com",
-      "phone": "9800000000",
-      "role": "DRIVER"
-    }
-  ]
-}
-```
-
----
-
-#### `GET /api/admin/dashboard`
-Get system-wide statistics for the admin.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response `200`:**
-```json
-{
-  "responseCode": 200,
-  "responseMessage": "Dashboard data fetched",
-  "timestamp": "2024-01-15T11:25:00",
-  "data": {
-    "totalBookings": 120,
-    "totalVendors": 8,
-    "totalDrivers": 95
-  }
-}
-```
-
----
-
-## Setup Instructions
-
-1. Clone the repository
+Login:
 
 ```bash
-git clone https://github.com/Ajita-920/smart-parking-system-backend.git
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"driver@parking.com","password":"Driver@123"}'
 ```
 
-2. Open project in IntelliJ IDEA
-
-3. Configure database in `src/main/resources/application.properties`
-
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/smart_parking
-spring.datasource.username=root
-spring.datasource.password=yourpassword
-spring.jpa.hibernate.ddl-auto=update
-```
-
-4. Run the application
+List parking:
 
 ```bash
-./mvnw spring-boot:run
+curl http://localhost:8080/api/parking \
+  -H "Authorization: Bearer <accessToken>"
 ```
 
----
+Find nearby parking:
 
-## Author
+```bash
+curl "http://localhost:8080/api/parking/nearby?lat=27.7172&lng=85.3240&limit=5" \
+  -H "Authorization: Bearer <accessToken>"
+```
 
-Ajita Shrestha  
-Backend Developer (Java & Spring Boot)
+Create booking:
+
+```bash
+curl -X POST http://localhost:8080/api/bookings \
+  -H "Authorization: Bearer <accessToken>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "parkingLocationId": "parking-location-uuid",
+    "slotId": "selected-slot-uuid",
+    "vehicleType": "TWO_WHEELER",
+    "startTime": "2026-05-21T10:00:00",
+    "endTime": "2026-05-21T12:00:00"
+  }'
+```
+
+## Development Notes
+
+- Hibernate uses `ddl-auto: update`, so tables are created or updated automatically in development.
+- PostgreSQL is the configured database dialect.
+- CORS is enabled for:
+  - `http://localhost:3000`
+  - `http://localhost:5173`
+  - `http://localhost:4200`
+- Soft-deleted rows are excluded by repository/service queries that check `deleted_at`.
+- The app loads `.env` through Dotenv before Spring Boot starts.
+
+## Important Production Checklist
+
+- Replace all development passwords and seeded credentials.
+- Move Khalti secret key out of `application.yml`.
+- Use a strong `JWT_SECRET`.
+- Set explicit production database credentials.
+- Disable or restrict SQL logging.
+- Review CORS origins for production frontend domains.
+- Consider Flyway or Liquibase for controlled database migrations.

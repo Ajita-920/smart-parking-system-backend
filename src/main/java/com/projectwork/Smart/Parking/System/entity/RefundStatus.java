@@ -1,7 +1,8 @@
 package com.projectwork.Smart.Parking.System.entity;
 
-public enum PaymentStatus {
+public enum RefundStatus {
+    NONE,
     PENDING,
-    SUCCESS,
-    FAILED,
+    COMPLETED,
+    FAILED
 }

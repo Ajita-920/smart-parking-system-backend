@@ -5,6 +5,7 @@ import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -21,12 +22,15 @@ public class BookingResponseDto {
 
     private UUID slotId;
     private String slotNumber;
+
     private VehicleType vehicleType;
 
     private BookingStatus status;
 
     private LocalDateTime startTime;
     private LocalDateTime endTime;
+
+    private Instant cancelledAt;
 
     private BigDecimal totalAmount;
 
