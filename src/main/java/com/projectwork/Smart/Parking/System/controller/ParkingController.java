@@ -5,6 +5,7 @@ import com.projectwork.Smart.Parking.System.dto.ApiResponse;
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.UpdateSlotsRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
+import com.projectwork.Smart.Parking.System.dto.response.ParkingSlotResponseDto;
 import com.projectwork.Smart.Parking.System.service.DijkstraService;
 import com.projectwork.Smart.Parking.System.service.ParkingService;
 import jakarta.validation.Valid;
@@ -135,6 +136,34 @@ public class ParkingController extends BaseController {
         return okResponse(
                 "Your parking locations fetched successfully!",
                 parkingService.getMyParkingLocations(authentication.getName()));
+    }
+
+    @GetMapping(ApiConstant.PARKING_SLOTS)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<ParkingSlotResponseDto>>> getAvailableSlots(
+            @PathVariable UUID id,
+            @RequestParam String vehicleType) {
+        List<ParkingSlotResponseDto> slots = parkingService.getAvailableSlots(id, vehicleType);
+
+        if (slots.isEmpty()) {
+            return okResponse("No available slots found for the selected vehicle type.", slots);
+        }
+
+        return okResponse("Available slots fetched successfully!", slots);
+    }
+
+    @GetMapping(ApiConstant.PARKING_ALL_SLOTS)
+    @PreAuthorize("hasRole('VENDOR')")
+    public ResponseEntity<ApiResponse<List<ParkingSlotResponseDto>>> getAllSlotsForVendor(
+            @PathVariable UUID id,
+            Authentication authentication) {
+        List<ParkingSlotResponseDto> slots = parkingService.getVendorSlots(id, authentication.getName());
+
+        if (slots.isEmpty()) {
+            return okResponse("No slots found for this parking location.", slots);
+        }
+
+        return okResponse("Parking slots fetched successfully!", slots);
     }
 
     @PostMapping

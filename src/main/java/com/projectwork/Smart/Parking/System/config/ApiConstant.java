@@ -39,6 +39,7 @@ public final class ApiConstant {
     public static final String PARKING_MINE = "/mine";
     public static final String PARKING_BY_ID = "/{id}";
     public static final String PARKING_SLOTS = "/{id}/slots";
+    public static final String PARKING_ALL_SLOTS = "/{id}/slots/all";
     // Admin
     public static final String ADMIN_VENDORS = "/vendors";
     public static final String ADMIN_DRIVERS = "/drivers";

@@ -3,6 +3,7 @@ package com.projectwork.Smart.Parking.System.service;
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.UpdateSlotsRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
+import com.projectwork.Smart.Parking.System.dto.response.ParkingSlotResponseDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,4 +26,8 @@ public interface ParkingService {
     ParkingLocationResponseDto updateAvailableSlots(UUID id, UpdateSlotsRequestDto request, String currentUserEmail);
 
     void deleteParkingLocation(UUID id, String currentUserEmail);
+
+    List<ParkingSlotResponseDto> getAvailableSlots(UUID parkingLocationId, String vehicleType);
+
+    List<ParkingSlotResponseDto> getVendorSlots(UUID parkingLocationId, String currentUserEmail);
 }

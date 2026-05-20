@@ -3,6 +3,7 @@ package com.projectwork.Smart.Parking.System.service;
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.UpdateSlotsRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
+import com.projectwork.Smart.Parking.System.dto.response.ParkingSlotResponseDto;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
@@ -186,6 +187,37 @@ public class ParkingServiceImpl implements ParkingService {
         parkingLocationRepository.save(parking);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ParkingSlotResponseDto> getAvailableSlots(UUID parkingLocationId, String vehicleType) {
+        ParkingLocation parking = parkingLocationRepository.findByIdAndDeletedAtIsNull(parkingLocationId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Parking location not found."
+                ));
+
+        VehicleType parsedVehicleType = parseVehicleType(vehicleType);
+
+        return parkingSlotRepository.findByLocationAndVehicleTypeAndStatusAndDeletedAtIsNull(
+                        parking,
+                        parsedVehicleType,
+                        ParkingSlotStatus.AVAILABLE)
+                .stream()
+                .map(this::toSlotResponseDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ParkingSlotResponseDto> getVendorSlots(UUID parkingLocationId, String currentUserEmail) {
+        ParkingLocation parking = resolveOwnedParking(parkingLocationId, currentUserEmail);
+
+        return parkingSlotRepository.findByLocationAndDeletedAtIsNull(parking)
+                .stream()
+                .map(this::toSlotResponseDto)
+                .toList();
+    }
+
     private User resolveVendor(String email) {
         return userRepository.findByEmailAndDeletedAtIsNull(email)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -242,6 +274,17 @@ public class ParkingServiceImpl implements ParkingService {
         return true;
     }
 
+    private VehicleType parseVehicleType(String vehicleType) {
+        try {
+            return VehicleType.valueOf(vehicleType.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid vehicle type. Allowed values: TWO_WHEELER, FOUR_WHEELER."
+            );
+        }
+    }
+
     private ParkingLocationResponseDto toResponseDto(ParkingLocation location) {
         ParkingLocationResponseDto dto = new ParkingLocationResponseDto();
 
@@ -265,6 +308,22 @@ public class ParkingServiceImpl implements ParkingService {
         if (location.getVendor() != null) {
             dto.setVendorId(location.getVendor().getId());
             dto.setVendorName(location.getVendor().getName());
+        }
+
+        return dto;
+    }
+
+    private ParkingSlotResponseDto toSlotResponseDto(ParkingSlot slot) {
+        ParkingSlotResponseDto dto = new ParkingSlotResponseDto();
+
+        dto.setId(slot.getId());
+        dto.setSlotNumber(slot.getSlotNumber());
+        dto.setVehicleType(slot.getVehicleType());
+        dto.setStatus(slot.getStatus());
+
+        if (slot.getLocation() != null) {
+            dto.setParkingLocationId(slot.getLocation().getId());
+            dto.setParkingLocationName(slot.getLocation().getName());
         }
 
         return dto;

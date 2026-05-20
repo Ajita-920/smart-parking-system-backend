@@ -303,6 +303,8 @@ Profile update body:
 | GET | `/api/parking/nearby-gps?latitude=27.7172&longitude=85.3240&maxSpots=20` | Authenticated | Find closest parking by GPS distance |
 | GET | `/api/parking/thamel/closest?latitude=27.7172&longitude=85.3240&maxSpots=5` | Authenticated | Find closest available parking in Thamel |
 | GET | `/api/parking/thamel/nearest?latitude=27.7172&longitude=85.3240` | Authenticated | Find nearest available parking in Thamel |
+| GET | `/api/parking/{id}/slots?vehicleType=TWO_WHEELER` | Authenticated | List available slots for a parking location and vehicle type |
+| GET | `/api/parking/{id}/slots/all` | VENDOR | List all slots for the vendor's own parking location |
 | GET | `/api/parking/mine` | VENDOR | List current vendor's parking locations |
 | POST | `/api/parking` | VENDOR | Create a parking location |
 | PUT | `/api/parking/{id}` | VENDOR | Update owned parking location details |
