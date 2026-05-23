@@ -25,15 +25,15 @@ public final class ApiConstant {
     public static final String BOOKING_BY_ID = "/{id}";
 
     // ─── Parking ──────────────────────────────────────────────────────────────
-    // GET /api/parking → all available (?area=thamel&available=true)
-    // GET /api/parking/nearby → N closest (?lat=&lng=&limit=5)
-    // GET /api/parking/nearest → single nearest (?lat=&lng=)
-    // GET /api/parking/mine → vendor's own locations (VENDOR)
-    // POST /api/parking → add location (VENDOR)
-    // PUT /api/parking/{id} → full update (VENDOR)
-    // PATCH /api/parking/{id}/slots → update available slots only (VENDOR)
-    // DELETE /api/parking/{id} → remove location (VENDOR)
-    public static final String PARKING_BASE = API_BASE + "/parking";
+    // GET /api/parking-locations → all available (?area=thamel&available=true)
+    // GET /api/parking-locations/nearby → N closest (?lat=&lng=&limit=5)
+    // GET /api/parking-locations/nearest → single nearest (?lat=&lng=)
+    // GET /api/parking-locations/mine → vendor's own locations (VENDOR)
+    // POST /api/parking-locations → add location (VENDOR)
+    // PUT /api/parking-locations/{id} → full update (VENDOR)
+    // PATCH /api/parking-locations/{id}/slots → update available slots only (VENDOR)
+    // DELETE /api/parking-locations/{id} → remove location (VENDOR)
+    public static final String PARKING_BASE = API_BASE + "/parking-locations";
     public static final String PARKING_NEARBY = "/nearby";
     public static final String PARKING_NEAREST = "/nearest";
     public static final String PARKING_MINE = "/mine";
