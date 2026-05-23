@@ -3,6 +3,10 @@ package com.projectwork.Smart.Parking.System.service;
 import org.springframework.stereotype.Service;
 import java.util.*;
 
+/**
+ * Holds the small road-distance graph used for Thamel parking distance
+ * calculations.
+ */
 @Service
 public class GraphService {
 
@@ -12,6 +16,9 @@ public class GraphService {
         buildGraph();
     }
 
+    /**
+     * Builds the in-memory graph of known Thamel parking points and road distances.
+     */
     private void buildGraph() {
         graph = new HashMap<>();
 
@@ -45,6 +52,9 @@ public class GraphService {
         ));
     }
 
+    /**
+     * Returns the road graph consumed by DijkstraService.
+     */
     public Map<DijkstraService.Node, List<DijkstraService.Edge>> getGraph() {
         return graph;
     }

@@ -12,6 +12,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
+/**
+ * Builds vendor dashboard totals by aggregating slot counts across the vendor's
+ * active parking locations.
+ */
 @Service
 public class VendorDashboardServiceImpl implements VendorDashboardService {
 
@@ -47,6 +51,9 @@ public class VendorDashboardServiceImpl implements VendorDashboardService {
         return dashboard;
     }
 
+    /**
+     * Adds one parking location's slot totals into the dashboard response.
+     */
     private void addLocationSummary(
             VendorDashboardResponseDto dashboard,
             ParkingLocation location

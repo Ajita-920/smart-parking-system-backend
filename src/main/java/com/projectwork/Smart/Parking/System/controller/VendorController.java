@@ -20,6 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
+/**
+ * Vendor-only endpoints for dashboard data and managing bookings at vendor
+ * parking locations.
+ */
 @RestController
 @RequestMapping(ApiConstant.VENDOR_BASE)
 @PreAuthorize("hasRole('VENDOR')")
@@ -35,6 +39,9 @@ public class VendorController extends BaseController {
                 this.bookingService = bookingService;
         }
 
+        /**
+         * Returns booking and parking-location metrics for the authenticated vendor.
+         */
         @GetMapping(ApiConstant.VENDOR_DASHBOARD)
         public ResponseEntity<ApiResponse<VendorDashboardResponseDto>> getDashboard(
                         Authentication authentication) {
@@ -43,6 +50,10 @@ public class VendorController extends BaseController {
                                 vendorDashboardService.getDashboard(authentication.getName()));
         }
 
+        /**
+         * Allows a vendor to update the status of a booking for their own parking
+         * location.
+         */
         @PutMapping(ApiConstant.VENDOR_BOOKING_STATUS)
         public ResponseEntity<ApiResponse<BookingResponseDto>> updateBookingStatus(
                         @PathVariable UUID bookingId,

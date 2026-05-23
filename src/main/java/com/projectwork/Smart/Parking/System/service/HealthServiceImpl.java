@@ -5,6 +5,9 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.Map;
 
+/**
+ * Provides static service health data plus a fresh timestamp.
+ */
 @Service
 public class HealthServiceImpl implements HealthService {
 

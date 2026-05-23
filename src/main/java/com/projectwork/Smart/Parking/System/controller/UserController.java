@@ -13,9 +13,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Authenticated user profile endpoints.
+ */
 @RestController
 @RequestMapping(ApiConstant.USER_BASE)
-@CrossOrigin(origins = "*")
 public class UserController extends BaseController {
 
     private final UserRepository userRepository;
@@ -26,6 +28,9 @@ public class UserController extends BaseController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * Returns profile details for the currently authenticated user.
+     */
     @GetMapping(ApiConstant.USER_ME)
     public ResponseEntity<ApiResponse<UserProfileResponseDto>> getMyProfile(
             org.springframework.security.core.Authentication authentication) {
@@ -33,6 +38,9 @@ public class UserController extends BaseController {
         return okResponse("User profile fetched successfully!", mapToProfile(user));
     }
 
+    /**
+     * Updates editable profile fields and optionally changes the user's password.
+     */
     @PutMapping(ApiConstant.USER_PROFILE)
     public ResponseEntity<ApiResponse<UserProfileResponseDto>> updateMyProfile(
             @Valid @RequestBody UserProfileUpdateRequestDto request,
@@ -63,11 +71,18 @@ public class UserController extends BaseController {
         return okResponse("User profile updated successfully!", mapToProfile(user));
     }
 
+    /**
+     * Resolves the current user from the email stored in the authentication
+     * principal.
+     */
     private User getCurrentUser(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
+    /**
+     * Converts the User entity into the public profile response shape.
+     */
     private UserProfileResponseDto mapToProfile(User user) {
         UserProfileResponseDto dto = new UserProfileResponseDto();
         dto.setId(user.getId());

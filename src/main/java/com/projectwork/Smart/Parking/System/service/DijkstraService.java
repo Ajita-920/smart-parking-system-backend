@@ -13,6 +13,9 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
+/**
+ * Finds parking locations by either direct GPS distance or the Thamel road graph.
+ */
 @Service
 public class DijkstraService {
 
@@ -29,6 +32,9 @@ public class DijkstraService {
         this.graphService = graphService;
     }
 
+    /**
+     * Finds available Thamel parking locations by shortest road-graph distance.
+     */
     public List<ParkingLocationResponseDto> findClosestInThamel(
             double userLat,
             double userLon,
@@ -63,6 +69,9 @@ public class DijkstraService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Finds available parking locations by straight-line GPS distance.
+     */
     public List<ParkingLocationResponseDto> findClosestByGps(
             double userLat,
             double userLon,
@@ -94,11 +103,18 @@ public class DijkstraService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Returns the nearest available Thamel parking location.
+     */
     public ParkingLocationResponseDto findNearestParking(double latitude, double longitude) {
         List<ParkingLocationResponseDto> closestLocations = findClosestInThamel(latitude, longitude, 1);
         return closestLocations.isEmpty() ? null : closestLocations.get(0);
     }
 
+    /**
+     * Maps a ParkingLocation entity into the API response object used by search
+     * endpoints.
+     */
     private ParkingLocationResponseDto mapToDto(ParkingLocation location) {
         ParkingLocationResponseDto dto = new ParkingLocationResponseDto();
 
@@ -129,6 +145,10 @@ public class DijkstraService {
         return dto;
     }
 
+    /**
+     * Calculates shortest path distances from a source graph node to every other
+     * node.
+     */
     private Map<Node, Double> dijkstra(Node source, Map<Node, List<Edge>> graph) {
         Map<Node, Double> distances = new HashMap<>();
         PriorityQueue<NodeDistance> priorityQueue = new PriorityQueue<>(
@@ -160,6 +180,9 @@ public class DijkstraService {
         return distances;
     }
 
+    /**
+     * Snaps arbitrary coordinates to the nearest known graph node.
+     */
     private Node findNearestGraphNode(double latitude, double longitude) {
         return graphService.getGraph()
                 .keySet()
@@ -169,6 +192,10 @@ public class DijkstraService {
                 .orElseThrow(() -> new IllegalStateException("Graph has no nodes."));
     }
 
+    /**
+     * Calculates straight-line distance between two latitude/longitude points in
+     * kilometers.
+     */
     private double haversine(double lat1, double lon1, double lat2, double lon2) {
         final int earthRadiusInKm = 6371;
 
@@ -184,6 +211,9 @@ public class DijkstraService {
         return earthRadiusInKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
+    /**
+     * Simple bounding-box check for the Thamel area used by the road-graph search.
+     */
     public static class AreaRestriction {
         private static final double THAMEL_MIN_LAT = 27.7100;
         private static final double THAMEL_MAX_LAT = 27.7250;
@@ -198,6 +228,9 @@ public class DijkstraService {
         }
     }
 
+    /**
+     * Priority-queue entry for Dijkstra's algorithm.
+     */
     private static class NodeDistance {
         private final Node node;
         private final double distance;
@@ -208,6 +241,9 @@ public class DijkstraService {
         }
     }
 
+    /**
+     * Graph vertex with stable identity by id.
+     */
     public static class Node {
         private final String id;
         private final double lat;
@@ -230,6 +266,9 @@ public class DijkstraService {
         }
     }
 
+    /**
+     * Directed graph edge with distance in kilometers.
+     */
     public static class Edge {
         private final Node from;
         private final Node to;

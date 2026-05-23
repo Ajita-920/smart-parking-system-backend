@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Booking endpoints for drivers, vendors, and authenticated booking lookups.
+ */
 @RestController
 @RequestMapping(ApiConstant.BOOKING_BASE)
 @PreAuthorize("isAuthenticated()")
@@ -32,6 +35,9 @@ public class BookingController extends BaseController {
         this.bookingService = bookingService;
     }
 
+    /**
+     * Creates a booking for the currently authenticated driver.
+     */
     @PostMapping
     @PreAuthorize("hasRole('DRIVER')")
     public ResponseEntity<ApiResponse<BookingResponseDto>> createBooking(
@@ -41,6 +47,9 @@ public class BookingController extends BaseController {
         return okResponse("Booking created successfully!", response);
     }
 
+    /**
+     * Returns bookings owned by the currently authenticated user.
+     */
     @GetMapping(ApiConstant.BOOKING_ME)
     public ResponseEntity<ApiResponse<List<BookingResponseDto>>> getMyBookings(
             Authentication authentication) {
@@ -48,6 +57,9 @@ public class BookingController extends BaseController {
         return okResponse("Bookings fetched successfully!", bookings);
     }
 
+    /**
+     * Cancels a driver's booking and returns cancellation/refund details.
+     */
     @PutMapping(ApiConstant.BOOKING_CANCEL)
     @PreAuthorize("hasRole('DRIVER')")
     public ResponseEntity<ApiResponse<BookingCancelResponseDto>> cancelBooking(
@@ -57,6 +69,9 @@ public class BookingController extends BaseController {
         return okResponse("Booking cancellation processed!", response);
     }
 
+    /**
+     * Fetches one booking if the current user is allowed to view it.
+     */
     @GetMapping(ApiConstant.BOOKING_BY_ID)
     public ResponseEntity<ApiResponse<BookingResponseDto>> getBookingById(
             @PathVariable UUID id,
@@ -65,6 +80,9 @@ public class BookingController extends BaseController {
         return okResponse("Booking fetched successfully!", booking);
     }
 
+    /**
+     * Lightweight endpoint for checking which principal Spring Security resolved.
+     */
     @GetMapping(ApiConstant.BOOKING_DEBUG_USER_LEGACY)
     @PreAuthorize("permitAll()")
     public ResponseEntity<ApiResponse<String>> debugUser(Authentication authentication) {

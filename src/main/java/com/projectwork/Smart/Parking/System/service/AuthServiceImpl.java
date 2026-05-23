@@ -1,8 +1,6 @@
 package com.projectwork.Smart.Parking.System.service;
 
 import com.projectwork.Smart.Parking.System.dto.request.LoginRequestDto;
-import com.projectwork.Smart.Parking.System.dto.request.LogoutRequestDto;
-import com.projectwork.Smart.Parking.System.dto.request.RefreshTokenRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.RegisterRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.AuthResponseDto;
 import com.projectwork.Smart.Parking.System.entity.BlacklistedToken;
@@ -27,6 +25,10 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 
+/**
+ * Implements stateless authentication using short-lived JWT access tokens and
+ * rotating refresh tokens stored as hashes.
+ */
 @Service
 public class AuthServiceImpl implements AuthService {
 
@@ -102,8 +104,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthResponseDto refreshToken(RefreshTokenRequestDto request) {
-        String rawRefreshToken = request.getRefreshToken().trim();
+    public AuthResponseDto refreshToken(String rawRefreshToken) {
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh token is required.");
+        }
+
+        rawRefreshToken = rawRefreshToken.trim();
         String oldTokenHash = hashToken(rawRefreshToken);
 
         RefreshToken oldRefreshToken = refreshTokenRepository.findByTokenHashAndDeletedAtIsNull(oldTokenHash)
@@ -136,6 +144,10 @@ public class AuthServiceImpl implements AuthService {
 
         validateUserCanAuthenticate(user);
 
+        /*
+         * Refresh tokens are single-use. After a successful refresh, the old token is
+         * revoked and linked to the replacement token hash for auditability.
+         */
         String newRawRefreshToken = generateRawRefreshToken();
         String newTokenHash = hashToken(newRawRefreshToken);
 
@@ -165,10 +177,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void logout(String accessToken, LogoutRequestDto request) {
+    public void logout(String accessToken, String rawRefreshToken) {
         blacklistAccessTokenIfPossible(accessToken);
 
-        String rawRefreshToken = request.getRefreshToken().trim();
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            return;
+        }
+
+        rawRefreshToken = rawRefreshToken.trim();
         String tokenHash = hashToken(rawRefreshToken);
 
         refreshTokenRepository.findByTokenHashAndDeletedAtIsNull(tokenHash)
@@ -197,6 +213,9 @@ public class AuthServiceImpl implements AuthService {
         refreshTokenRepository.saveAll(refreshTokens);
     }
 
+    /**
+     * Creates the access token plus raw refresh token for a successful auth event.
+     */
     private AuthResponseDto buildAuthResponse(User user) {
         String accessToken = jwtUtil.generateAccessToken(
                 user.getEmail(),
@@ -206,6 +225,10 @@ public class AuthServiceImpl implements AuthService {
         String rawRefreshToken = generateRawRefreshToken();
         String refreshTokenHash = hashToken(rawRefreshToken);
 
+        /*
+         * Only the hash is stored in the database. The raw token is returned to the
+         * controller so it can be placed in an HTTP-only cookie.
+         */
         saveRefreshToken(user, refreshTokenHash);
 
         return new AuthResponseDto(
@@ -221,6 +244,10 @@ public class AuthServiceImpl implements AuthService {
                 user.isApproved());
     }
 
+    /**
+     * Applies account-state rules that block login/refresh even when credentials or
+     * tokens are otherwise valid.
+     */
     private void validateUserCanAuthenticate(User user) {
         if (user.isBanned()) {
             throw new ResponseStatusException(
@@ -235,6 +262,9 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /**
+     * Persists a refresh token hash with its expiry.
+     */
     private void saveRefreshToken(User user, String tokenHash) {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUser(user);
@@ -244,6 +274,10 @@ public class AuthServiceImpl implements AuthService {
         refreshTokenRepository.save(refreshToken);
     }
 
+    /**
+     * Stores the access-token JTI until expiry so a logged-out token cannot be used
+     * again.
+     */
     private void blacklistAccessTokenIfPossible(String accessToken) {
         try {
             String jti = jwtUtil.extractJti(accessToken);
@@ -273,6 +307,9 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /**
+     * Generates a high-entropy opaque refresh token for the browser cookie.
+     */
     private String generateRawRefreshToken() {
         byte[] randomBytes = new byte[64];
         secureRandom.nextBytes(randomBytes);
@@ -282,6 +319,10 @@ public class AuthServiceImpl implements AuthService {
                 .encodeToString(randomBytes);
     }
 
+    /**
+     * Hashes a raw refresh token before lookup/storage so leaked database rows do
+     * not expose usable refresh tokens.
+     */
     private String hashToken(String rawToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -295,6 +336,9 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /**
+     * Converts request role text into a supported UserRole.
+     */
     private UserRole parseUserRole(String role) {
         try {
             return UserRole.valueOf(role.trim().toUpperCase());
@@ -305,6 +349,9 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /**
+     * Normalizes emails before lookup/storage to avoid duplicate accounts by case.
+     */
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase();
     }

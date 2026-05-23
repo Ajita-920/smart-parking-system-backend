@@ -26,6 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Public parking search endpoints plus vendor-only parking management actions.
+ */
 @RestController
 @RequestMapping(ApiConstant.PARKING_BASE)
 public class ParkingController extends BaseController {
@@ -40,6 +43,9 @@ public class ParkingController extends BaseController {
         this.dijkstraService = dijkstraService;
     }
 
+    /**
+     * Lists parking locations with optional area and availability filters.
+     */
     @GetMapping
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getAllParking(
             @RequestParam(required = false) String area,
@@ -53,6 +59,9 @@ public class ParkingController extends BaseController {
         return okResponse("Parking locations fetched successfully!", locations);
     }
 
+    /**
+     * Finds nearby parking locations using latitude/longitude distance sorting.
+     */
     @GetMapping(ApiConstant.PARKING_NEARBY)
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getNearbyParking(
             @RequestParam double lat,
@@ -67,6 +76,9 @@ public class ParkingController extends BaseController {
         return okResponse("Found " + spots.size() + " nearby parking spots.", spots);
     }
 
+    /**
+     * Returns the nearest available parking location to the supplied coordinates.
+     */
     @GetMapping(ApiConstant.PARKING_NEAREST)
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> getNearestParking(
             @RequestParam double lat,
@@ -80,6 +92,9 @@ public class ParkingController extends BaseController {
         return okResponse("Nearest parking spot found!", nearest);
     }
 
+    /**
+     * Finds closest locations using direct GPS distance.
+     */
     @GetMapping("/nearby-gps")
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findClosestByGps(
             @RequestParam double latitude,
@@ -94,6 +109,9 @@ public class ParkingController extends BaseController {
         return okResponse("Found " + spots.size() + " parking spots sorted by GPS distance.", spots);
     }
 
+    /**
+     * Finds closest Thamel locations using the road-graph/Dijkstra distance model.
+     */
     @GetMapping("/thamel/closest")
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findClosestInThamel(
             @RequestParam double latitude,
@@ -110,6 +128,9 @@ public class ParkingController extends BaseController {
                 spots);
     }
 
+    /**
+     * Returns the single nearest Thamel parking location.
+     */
     @GetMapping("/thamel/nearest")
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> findNearestInThamel(
             @RequestParam double latitude,
@@ -123,6 +144,9 @@ public class ParkingController extends BaseController {
         return okResponse("Nearest parking in Thamel found successfully!", nearest);
     }
 
+    /**
+     * Lists parking locations owned by the authenticated vendor.
+     */
     @GetMapping(ApiConstant.PARKING_MINE)
     @PreAuthorize("hasRole('VENDOR')")
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> getMyParkingLocations(
@@ -132,6 +156,9 @@ public class ParkingController extends BaseController {
                 parkingService.getMyParkingLocations(authentication.getName()));
     }
 
+    /**
+     * Fetches a parking location by id.
+     */
     @GetMapping(ApiConstant.PARKING_BY_ID)
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> getParkingById(
             @PathVariable UUID id) {
@@ -140,6 +167,9 @@ public class ParkingController extends BaseController {
                 parkingService.getParkingById(id));
     }
 
+    /**
+     * Returns public slot data, optionally filtered by vehicle type.
+     */
     @GetMapping(ApiConstant.PARKING_SLOTS)
     public ResponseEntity<ApiResponse<List<ParkingSlotResponseDto>>> getParkingSlots(
             @PathVariable UUID id,
@@ -153,6 +183,9 @@ public class ParkingController extends BaseController {
         return okResponse("Parking slots fetched successfully!", slots);
     }
 
+    /**
+     * Returns all slots for a vendor-owned parking location.
+     */
     @GetMapping(ApiConstant.PARKING_ALL_SLOTS)
     @PreAuthorize("hasRole('VENDOR')")
     public ResponseEntity<ApiResponse<List<ParkingSlotResponseDto>>> getAllSlotsForVendor(
@@ -167,6 +200,9 @@ public class ParkingController extends BaseController {
         return okResponse("Parking slots fetched successfully!", slots);
     }
 
+    /**
+     * Creates a parking location for the authenticated vendor.
+     */
     @PostMapping
     @PreAuthorize("hasRole('VENDOR')")
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> addParkingLocation(
@@ -177,6 +213,9 @@ public class ParkingController extends BaseController {
                 parkingService.addParkingLocation(request, authentication.getName()));
     }
 
+    /**
+     * Updates a vendor-owned parking location.
+     */
     @PutMapping(ApiConstant.PARKING_BY_ID)
     @PreAuthorize("hasRole('VENDOR')")
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> updateParkingLocation(
@@ -188,6 +227,9 @@ public class ParkingController extends BaseController {
                 parkingService.updateParkingLocation(id, request, authentication.getName()));
     }
 
+    /**
+     * Updates only the available slot counts for a vendor-owned parking location.
+     */
     @PatchMapping(ApiConstant.PARKING_SLOTS)
     @PreAuthorize("hasRole('VENDOR')")
     public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> updateAvailableSlots(
@@ -199,6 +241,9 @@ public class ParkingController extends BaseController {
                 parkingService.updateAvailableSlots(id, request, authentication.getName()));
     }
 
+    /**
+     * Soft-deletes a vendor-owned parking location.
+     */
     @DeleteMapping(ApiConstant.PARKING_BY_ID)
     @PreAuthorize("hasRole('VENDOR')")
     public ResponseEntity<ApiResponse<Void>> deleteParkingLocation(

@@ -34,8 +34,12 @@ app:
     url: ${APP_WEBSITE_URL:http://localhost:8080}
   jwt:
     secret: ${JWT_SECRET:mysecretkey}
-    access-expiration: 900000 # 15 minutes
-    refresh-expiration: 604800000 # 7 days
+    access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:900000} # 15 minutes
+    refresh-token-expiration-ms: ${JWT_REFRESH_TOKEN_EXPIRATION_MS:604800000} # 7 days
+  auth:
+    refresh-cookie:
+      secure: ${REFRESH_COOKIE_SECURE:false}
+      same-site: ${REFRESH_COOKIE_SAME_SITE:Lax}
 
 # Actuator Management Endpoints
 management:

@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+/**
+ * Lightweight health endpoint used by monitoring and local smoke checks.
+ */
 @RestController
 @RequestMapping(ApiConstant.HEALTH_BASE)
 public class HealthController extends BaseController {
@@ -20,6 +23,9 @@ public class HealthController extends BaseController {
         this.healthService = healthService;
     }
 
+    /**
+     * Returns basic service health metadata.
+     */
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
         return okResponse("Service is running", healthService.getHealthStatus());

@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Implements admin workflows against active, non-soft-deleted records.
+ */
 @Service
 public class AdminServiceImpl implements AdminService {
 
@@ -144,6 +147,9 @@ public class AdminServiceImpl implements AdminService {
         userRepository.save(vendor);
     }
 
+    /**
+     * Soft-deletes every active parking location owned by a vendor.
+     */
     private void softDeleteVendorParkingLocations(User vendor) {
         List<ParkingLocation> parkingLocations = parkingLocationRepository.findByVendorAndDeletedAtIsNull(vendor);
 
@@ -151,6 +157,9 @@ public class AdminServiceImpl implements AdminService {
         parkingLocationRepository.saveAll(parkingLocations);
     }
 
+    /**
+     * Fetches a user while excluding soft-deleted records.
+     */
     private User resolveActiveUser(UUID id) {
         return userRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -159,6 +168,9 @@ public class AdminServiceImpl implements AdminService {
                 ));
     }
 
+    /**
+     * Parses the optional user-role filter accepted by admin endpoints.
+     */
     private UserRole parseUserRole(String role) {
         try {
             return UserRole.valueOf(role.trim().toUpperCase());
@@ -170,6 +182,9 @@ public class AdminServiceImpl implements AdminService {
         }
     }
 
+    /**
+     * Maps a user entity into the admin user response shape.
+     */
     private UserResponseDto toUserResponse(User user) {
         UserResponseDto dto = new UserResponseDto();
 
@@ -184,6 +199,10 @@ public class AdminServiceImpl implements AdminService {
         return dto;
     }
 
+    /**
+     * Maps booking relationships defensively because some relations can be absent
+     * after soft-delete or partial data creation.
+     */
     private BookingResponseDto toBookingResponse(Booking booking) {
         BookingResponseDto dto = new BookingResponseDto();
 

@@ -21,6 +21,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Implements parking search, vendor ownership checks, slot creation, and slot
+ * availability updates.
+ */
 @Service
 public class ParkingServiceImpl implements ParkingService {
 

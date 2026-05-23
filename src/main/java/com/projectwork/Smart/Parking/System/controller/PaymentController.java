@@ -10,6 +10,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Payment endpoints for initiating and verifying Khalti transactions.
+ */
 @RestController
 @RequestMapping(ApiConstant.PAYMENT_BASE)
 public class PaymentController extends BaseController {
@@ -20,6 +23,9 @@ public class PaymentController extends BaseController {
         this.paymentService = paymentService;
     }
 
+    /**
+     * Starts a Khalti payment flow for an authenticated user.
+     */
     @PostMapping(ApiConstant.PAYMENT_KHALTI_INITIATE)
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaymentResponseDto>> initiateKhaltiPayment(
@@ -29,6 +35,9 @@ public class PaymentController extends BaseController {
         return okResponse("Khalti payment initiated successfully!", response);
     }
 
+    /**
+     * Verifies a Khalti payment callback or redirect by pidx.
+     */
     @GetMapping(ApiConstant.PAYMENT_KHALTI_VERIFY)
     public ResponseEntity<ApiResponse<PaymentResponseDto>> verifyKhaltiPayment(
             @RequestParam String pidx) {

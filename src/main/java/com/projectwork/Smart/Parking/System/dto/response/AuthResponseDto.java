@@ -1,5 +1,6 @@
 package com.projectwork.Smart.Parking.System.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.projectwork.Smart.Parking.System.entity.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -11,7 +12,10 @@ import java.util.UUID;
 public class AuthResponseDto {
 
     private String accessToken;
+
+    @JsonIgnore
     private String refreshToken;
+
     private String tokenType;
     private long expiresIn;
 

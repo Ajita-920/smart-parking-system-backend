@@ -19,6 +19,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Admin-only endpoints for platform-wide users, bookings, and dashboard
+ * actions.
+ */
 @RestController
 @RequestMapping(ApiConstant.ADMIN_BASE)
 @PreAuthorize("hasRole('ADMIN')")
@@ -30,6 +34,9 @@ public class AdminController extends BaseController {
         this.adminService = adminService;
     }
 
+    /**
+     * Returns high-level platform counts for the admin dashboard.
+     */
     @GetMapping(ApiConstant.ADMIN_DASHBOARD)
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboard() {
         return okResponse(
@@ -37,6 +44,9 @@ public class AdminController extends BaseController {
                 adminService.getDashboard());
     }
 
+    /**
+     * Lists all active bookings in the system.
+     */
     @GetMapping(ApiConstant.ADMIN_BOOKINGS)
     public ResponseEntity<ApiResponse<List<BookingResponseDto>>> getAllBookings() {
         return okResponse(
@@ -44,6 +54,9 @@ public class AdminController extends BaseController {
                 adminService.getAllBookings());
     }
 
+    /**
+     * Lists active users, optionally filtered by role.
+     */
     @GetMapping(ApiConstant.ADMIN_USERS)
     public ResponseEntity<ApiResponse<List<UserResponseDto>>> getUsers(
             @RequestParam(required = false) String role) {
@@ -52,6 +65,9 @@ public class AdminController extends BaseController {
                 adminService.getUsers(role));
     }
 
+    /**
+     * Bans a non-admin user from authenticating.
+     */
     @PutMapping(ApiConstant.ADMIN_USER_BAN)
     public ResponseEntity<ApiResponse<UserResponseDto>> banUser(@PathVariable UUID id) {
         return okResponse(
@@ -59,12 +75,19 @@ public class AdminController extends BaseController {
                 adminService.banUser(id));
     }
 
+    /**
+     * Soft-deletes a non-admin user and related vendor parking locations when
+     * applicable.
+     */
     @DeleteMapping(ApiConstant.ADMIN_USER_BY_ID)
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
         adminService.deleteUser(id);
         return okResponse("User deleted successfully!", null);
     }
 
+    /**
+     * Marks a vendor account as approved so it can authenticate.
+     */
     @PutMapping(ApiConstant.ADMIN_VENDOR_APPROVE)
     public ResponseEntity<ApiResponse<UserResponseDto>> approveVendor(@PathVariable UUID id) {
         return okResponse(
@@ -72,6 +95,9 @@ public class AdminController extends BaseController {
                 adminService.approveVendor(id));
     }
 
+    /**
+     * Soft-deletes a vendor and all active parking locations owned by that vendor.
+     */
     @DeleteMapping(ApiConstant.ADMIN_VENDOR_BY_ID)
     public ResponseEntity<ApiResponse<Void>> deleteVendor(@PathVariable UUID id) {
         adminService.deleteVendor(id);

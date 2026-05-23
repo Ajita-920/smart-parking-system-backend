@@ -31,6 +31,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Implements booking lifecycle rules, including slot reservation, cancellation,
+ * and vendor status updates.
+ */
 @Service
 public class BookingServiceImpl implements BookingService {
 

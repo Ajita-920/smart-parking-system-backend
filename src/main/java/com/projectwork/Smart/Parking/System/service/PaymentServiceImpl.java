@@ -21,6 +21,10 @@ import java.math.RoundingMode;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Integrates booking payments with Khalti and keeps local payment records in
+ * sync with verification results.
+ */
 @Service
 public class PaymentServiceImpl implements PaymentService {
 
