@@ -41,7 +41,7 @@ public class UserController extends BaseController {
     /**
      * Updates editable profile fields and optionally changes the user's password.
      */
-    @PutMapping(ApiConstant.USER_PROFILE)
+    @PutMapping(ApiConstant.USER_ME)
     public ResponseEntity<ApiResponse<UserProfileResponseDto>> updateMyProfile(
             @Valid @RequestBody UserProfileUpdateRequestDto request,
             org.springframework.security.core.Authentication authentication) {
