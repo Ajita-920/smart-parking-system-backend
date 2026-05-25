@@ -43,12 +43,9 @@ public final class ApiConstant {
     public static final String PARKING_SLOTS = "/{id}/slots";
     public static final String PARKING_ALL_SLOTS = "/{id}/slots/all";
 
-
     // User
     public static final String USER_BASE = API_BASE + "/users";
     public static final String USER_ME = "/me";
-    
-
    
     // ─── Vendors ──────────────────────────────────────────────────────────────
     // GET /api/vendors/dashboard → vendor dashboard (VENDOR)
