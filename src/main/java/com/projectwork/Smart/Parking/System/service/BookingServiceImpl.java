@@ -83,7 +83,7 @@ public class BookingServiceImpl implements BookingService {
 
                 validateAvailableSlotCount(location, vehicleType);
 
-                ParkingSlot slot = parkingSlotRepository.findByIdAndDeletedAtIsNull(request.getSlotId())
+                ParkingSlot slot = parkingSlotRepository.findByIdAndDeletedAtIsNullForUpdate(request.getSlotId())
                                 .orElseThrow(() -> new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND,
                                                 "Parking slot not found."));

@@ -4,7 +4,11 @@ import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
 import com.projectwork.Smart.Parking.System.entity.VehicleType;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +17,14 @@ import java.util.UUID;
 public interface ParkingSlotRepository extends JpaRepository<ParkingSlot, UUID> {
 
     Optional<ParkingSlot> findByIdAndDeletedAtIsNull(UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT slot FROM ParkingSlot slot
+            WHERE slot.id = :id
+              AND slot.deletedAt IS NULL
+            """)
+    Optional<ParkingSlot> findByIdAndDeletedAtIsNullForUpdate(@Param("id") UUID id);
 
     List<ParkingSlot> findByLocationAndDeletedAtIsNull(ParkingLocation location);
 
