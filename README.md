@@ -149,6 +149,19 @@ The development compose file starts:
 The development compose file creates the `smart-parking-dev-network` network
 automatically and stores database files in the `postgres_data` volume.
 
+If a port is already used on your machine, override it without editing the
+compose file:
+
+```bash
+BACKEND_PORT=8081 POSTGRES_PORT=5433 docker compose -f docker-compose-dev.yml up --build
+```
+
+PowerShell:
+
+```powershell
+$env:BACKEND_PORT="8081"; $env:POSTGRES_PORT="5433"; docker compose -f docker-compose-dev.yml up --build
+```
+
 ## Build and Test
 
 ```bash
