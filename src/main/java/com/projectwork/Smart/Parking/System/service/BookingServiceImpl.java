@@ -20,6 +20,7 @@ import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository
 import com.projectwork.Smart.Parking.System.repository.ParkingSlotRepository;
 import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,7 @@ import java.util.Optional;
  * and vendor status updates.
  */
 @Service
+@Slf4j
 public class BookingServiceImpl implements BookingService {
 
         private static final BigDecimal DEFAULT_HOURLY_RATE = new BigDecimal("100.00");
@@ -45,18 +47,21 @@ public class BookingServiceImpl implements BookingService {
         private final ParkingSlotRepository parkingSlotRepository;
         private final UserRepository userRepository;
         private final PaymentRepository paymentRepository;
+        private final EmailService emailService;
 
         public BookingServiceImpl(
                         BookingRepository bookingRepository,
                         ParkingLocationRepository parkingLocationRepository,
                         ParkingSlotRepository parkingSlotRepository,
                         UserRepository userRepository,
-                        PaymentRepository paymentRepository) {
+                        PaymentRepository paymentRepository,
+                        EmailService emailService) {
                 this.bookingRepository = bookingRepository;
                 this.parkingLocationRepository = parkingLocationRepository;
                 this.parkingSlotRepository = parkingSlotRepository;
                 this.userRepository = userRepository;
                 this.paymentRepository = paymentRepository;
+                this.emailService = emailService;
         }
 
         @Override
@@ -130,6 +135,8 @@ public class BookingServiceImpl implements BookingService {
 
                 BookingResponseDto response = mapToResponse(savedBooking);
                 response.setMessage("Booking created successfully.");
+
+                sendConfirmationEmailAsync(response, driver.getEmail());
                 return response;
         }
 
@@ -405,6 +412,14 @@ public class BookingServiceImpl implements BookingService {
                 if (location != null) {
                         incrementAvailableSlotCount(location, slot.getVehicleType());
                         parkingLocationRepository.save(location);
+                }
+        }
+
+        private void sendConfirmationEmailAsync(BookingResponseDto bookingResponseDto, String driverEmail) {
+                try {
+                        emailService.sendBookingConfirmation(bookingResponseDto, driverEmail);
+                } catch (Exception e) {
+                        log.warn("Booking confirmation email could not be queued for {}", driverEmail, e);
                 }
         }
 
