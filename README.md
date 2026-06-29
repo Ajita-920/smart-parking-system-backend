@@ -146,11 +146,8 @@ The development compose file starts:
 - PostgreSQL on `localhost:5432`
 - A Maven cache volume for faster rebuilds
 
-If the external Docker network does not exist yet, create it first:
-
-```bash
-docker network create smart-parking-dev-network
-```
+The development compose file creates the `smart-parking-dev-network` network
+automatically and stores database files in the `postgres_data` volume.
 
 ## Build and Test
 
