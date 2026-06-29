@@ -1,16 +1,36 @@
 services:
+  postgresdb:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: smart_parking
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - smart-parking-dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d smart_parking"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: .
       target: development
-    container_name: smart-parking-backend-dev
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     volumes:
       - .:/app
       - m2_cache:/root/.m2
     env_file:
       - .env.backend.dev
+    depends_on:
+      postgresdb:
+        condition: service_healthy
     networks:
       - smart-parking-dev-network
     healthcheck:
@@ -22,6 +42,7 @@ services:
 
 volumes:
   m2_cache:
+  postgres_data:
 
 networks:
   smart-parking-dev-network:

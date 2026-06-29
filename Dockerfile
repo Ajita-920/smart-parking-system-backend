@@ -8,7 +8,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pom.xml .
-RUN mvn dependency:go-offline
 
 COPY src ./src
 
