@@ -42,6 +42,7 @@ public final class ApiConstant {
     public static final String PARKING_BY_ID = "/{id}";
     public static final String PARKING_SLOTS = "/{id}/slots";
     public static final String PARKING_ALL_SLOTS = "/{id}/slots/all";
+    public static final String PARKING_SLOT_STATUS = "/{parkingLocationId}/slots/{slotId}/status";
 
     // User
     public static final String USER_BASE = API_BASE + "/users";
@@ -52,6 +53,7 @@ public final class ApiConstant {
     public static final String VENDOR_BASE = API_BASE + "/vendors";
     public static final String VENDOR_DASHBOARD = "/dashboard";
     public static final String VENDOR_BOOKING_STATUS = "/bookings/{bookingId}/status";
+    public static final String VENDOR_WALK_IN_BOOKING = "/bookings/walk-in";
 
     // ─── Admin ────────────────────────────────────────────────────────────────
     // GET /api/admin/dashboard → platform stats

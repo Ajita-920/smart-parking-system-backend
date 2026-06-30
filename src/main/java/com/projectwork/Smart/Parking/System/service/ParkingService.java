@@ -1,6 +1,7 @@
 package com.projectwork.Smart.Parking.System.service;
 
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.SlotStatusUpdateRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.UpdateSlotsRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingSlotResponseDto;
@@ -68,4 +69,13 @@ public interface ParkingService {
      * Returns all slot information for a vendor-owned location.
      */
     List<ParkingSlotResponseDto> getVendorSlots(UUID parkingLocationId, String currentUserEmail);
+
+    /**
+     * Updates vendor-controlled maintenance status for a slot.
+     */
+    ParkingSlotResponseDto updateSlotStatus(
+            UUID parkingLocationId,
+            UUID slotId,
+            SlotStatusUpdateRequestDto request,
+            String currentUserEmail);
 }

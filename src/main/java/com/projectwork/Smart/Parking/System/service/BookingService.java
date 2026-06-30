@@ -2,6 +2,7 @@ package com.projectwork.Smart.Parking.System.service;
 
 import com.projectwork.Smart.Parking.System.dto.request.BookingRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.VendorBookingStatusRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.WalkInBookingRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingCancelResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 
@@ -40,4 +41,9 @@ public interface BookingService {
             UUID bookingId,
             VendorBookingStatusRequestDto request,
             String currentUserEmail);
+
+    /**
+     * Creates an immediate vendor walk-in booking for an available slot.
+     */
+    BookingResponseDto createWalkInBooking(WalkInBookingRequestDto request, String currentUserEmail);
 }

@@ -3,6 +3,7 @@ package com.projectwork.Smart.Parking.System.controller;
 import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
 import com.projectwork.Smart.Parking.System.dto.request.VendorBookingStatusRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.WalkInBookingRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.VendorDashboardResponseDto;
 import com.projectwork.Smart.Parking.System.service.BookingService;
@@ -13,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,6 +50,19 @@ public class VendorController extends BaseController {
                 return okResponse(
                                 "Vendor dashboard fetched successfully!",
                                 vendorDashboardService.getDashboard(authentication.getName()));
+        }
+
+        /**
+         * Creates an immediate walk-in booking for an available slot at a vendor-owned
+         * parking location.
+         */
+        @PostMapping(ApiConstant.VENDOR_WALK_IN_BOOKING)
+        public ResponseEntity<ApiResponse<BookingResponseDto>> createWalkInBooking(
+                        @Valid @RequestBody WalkInBookingRequestDto request,
+                        Authentication authentication) {
+                return okResponse(
+                                "Walk-in booking created successfully!",
+                                bookingService.createWalkInBooking(request, authentication.getName()));
         }
 
         /**
