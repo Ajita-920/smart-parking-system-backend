@@ -2,6 +2,7 @@ package com.projectwork.Smart.Parking.System.service;
 
 import com.projectwork.Smart.Parking.System.dto.request.BookingRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.VendorBookingStatusRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.WalkInBookingRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingCancelResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import com.projectwork.Smart.Parking.System.entity.Booking;
@@ -10,6 +11,7 @@ import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
 import com.projectwork.Smart.Parking.System.entity.Payment;
+import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
 import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
 import com.projectwork.Smart.Parking.System.entity.RefundStatus;
 import com.projectwork.Smart.Parking.System.entity.User;
@@ -137,6 +139,90 @@ public class BookingServiceImpl implements BookingService {
                 response.setMessage("Booking created successfully.");
 
                 sendConfirmationEmailAsync(response, driver.getEmail());
+                return response;
+        }
+
+        @Override
+        @Transactional
+        public BookingResponseDto createWalkInBooking(WalkInBookingRequestDto request, String currentUserEmail) {
+                User vendor = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Vendor not found."));
+
+                if (vendor.getRole() != UserRole.VENDOR) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "Only vendors can create walk-in bookings.");
+                }
+
+                ParkingLocation location = parkingLocationRepository
+                                .findByIdAndDeletedAtIsNull(request.getParkingLocationId())
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Parking location not found."));
+
+                if (location.getVendor() == null || !location.getVendor().getId().equals(vendor.getId())) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "You do not have permission to create bookings for this parking location.");
+                }
+
+                VehicleType vehicleType = parseVehicleType(request.getVehicleType());
+                validateAvailableSlotCount(location, vehicleType);
+
+                ParkingSlot slot = parkingSlotRepository.findByIdAndDeletedAtIsNullForUpdate(request.getSlotId())
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Parking slot not found."));
+
+                if (!slot.getLocation().getId().equals(location.getId())) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Selected slot does not belong to this parking location.");
+                }
+
+                if (slot.getVehicleType() != vehicleType) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Selected slot does not match the requested vehicle type.");
+                }
+
+                if (slot.getStatus() != ParkingSlotStatus.AVAILABLE) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Selected slot is no longer available.");
+                }
+
+                PaymentMethod paymentMethod = parsePaymentMethod(request.getPaymentMethod());
+
+                slot.markOccupied();
+                decrementAvailableSlotCount(location, vehicleType);
+
+                Booking booking = new Booking();
+                booking.setParkingLocation(location);
+                booking.setSlot(slot);
+                booking.setVehicleType(vehicleType);
+                booking.setCustomerName(request.getCustomerName());
+                booking.setCustomerPhone(request.getCustomerPhone());
+                booking.setVehicleNumber(request.getVehicleNumber());
+                booking.setWalkIn(true);
+                booking.setStartTime(request.getStartTime());
+                booking.setEndTime(request.getEndTime());
+                booking.setStatus(BookingStatus.CONFIRMED);
+                booking.setTotalAmount(
+                                calculateAmount(location, vehicleType, request.getStartTime(), request.getEndTime()));
+
+                ParkingSlot savedSlot = parkingSlotRepository.save(slot);
+                ParkingLocation savedLocation = parkingLocationRepository.save(location);
+                booking.setSlot(savedSlot);
+                booking.setParkingLocation(savedLocation);
+
+                Booking savedBooking = bookingRepository.save(booking);
+                createWalkInPayment(savedBooking, paymentMethod);
+
+                BookingResponseDto response = mapToResponse(savedBooking);
+                response.setMessage("Walk-in booking created successfully.");
                 return response;
         }
 
@@ -305,8 +391,15 @@ public class BookingServiceImpl implements BookingService {
 
                 dto.setBookingId(booking.getId());
 
-                dto.setDriverId(booking.getDriver().getId());
-                dto.setDriverName(booking.getDriver().getName());
+                if (booking.getDriver() != null) {
+                        dto.setDriverId(booking.getDriver().getId());
+                        dto.setDriverName(booking.getDriver().getName());
+                }
+
+                dto.setCustomerName(booking.getCustomerName());
+                dto.setCustomerPhone(booking.getCustomerPhone());
+                dto.setVehicleNumber(booking.getVehicleNumber());
+                dto.setWalkIn(booking.isWalkIn());
 
                 dto.setParkingLocationId(booking.getParkingLocation().getId());
                 dto.setParkingLocationName(booking.getParkingLocation().getName());
@@ -447,6 +540,39 @@ public class BookingServiceImpl implements BookingService {
                 }
 
                 return ratePerHour.multiply(BigDecimal.valueOf(billableHours));
+        }
+
+        private void createWalkInPayment(Booking booking, PaymentMethod paymentMethod) {
+                Payment payment = new Payment();
+                payment.setBooking(booking);
+                payment.setAmount(booking.getTotalAmount());
+                payment.setPaymentMethod(paymentMethod);
+                payment.setTransactionId(generateTransactionId());
+
+                if (paymentMethod == PaymentMethod.CASH) {
+                        payment.markSuccess();
+                } else {
+                        payment.setStatus(PaymentStatus.PENDING);
+                }
+
+                paymentRepository.save(payment);
+        }
+
+        private PaymentMethod parsePaymentMethod(String paymentMethod) {
+                try {
+                        return PaymentMethod.valueOf(paymentMethod.trim().toUpperCase());
+                } catch (IllegalArgumentException ex) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Invalid payment method. Allowed values: CASH, KHALTI, ESEWA.");
+                }
+        }
+
+        private String generateTransactionId() {
+                return "TXN-" + java.util.UUID.randomUUID()
+                                .toString()
+                                .substring(0, 8)
+                                .toUpperCase();
         }
 
         private void validateAvailableSlotCount(ParkingLocation location, VehicleType vehicleType) {

@@ -1,14 +1,18 @@
 package com.projectwork.Smart.Parking.System.service;
 
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.SlotStatusUpdateRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.UpdateSlotsRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingSlotResponseDto;
+import com.projectwork.Smart.Parking.System.entity.Booking;
+import com.projectwork.Smart.Parking.System.entity.BookingStatus;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
 import com.projectwork.Smart.Parking.System.entity.User;
 import com.projectwork.Smart.Parking.System.entity.VehicleType;
+import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
 import com.projectwork.Smart.Parking.System.repository.ParkingSlotRepository;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
@@ -21,25 +25,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Implements parking search, vendor ownership checks, slot creation, and slot
- * availability updates.
- */
 @Service
 public class ParkingServiceImpl implements ParkingService {
 
     private final DijkstraService dijkstraService;
+    private final BookingRepository bookingRepository;
     private final ParkingLocationRepository parkingLocationRepository;
     private final ParkingSlotRepository parkingSlotRepository;
     private final UserRepository userRepository;
 
     public ParkingServiceImpl(
             DijkstraService dijkstraService,
+            BookingRepository bookingRepository,
             ParkingLocationRepository parkingLocationRepository,
             ParkingSlotRepository parkingSlotRepository,
             UserRepository userRepository
     ) {
         this.dijkstraService = dijkstraService;
+        this.bookingRepository = bookingRepository;
         this.parkingLocationRepository = parkingLocationRepository;
         this.parkingSlotRepository = parkingSlotRepository;
         this.userRepository = userRepository;
@@ -58,14 +61,14 @@ public class ParkingServiceImpl implements ParkingService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ParkingLocationResponseDto> getNearbyParking(double latitude, double longitude, int limit) {
-        return dijkstraService.findClosestInThamel(latitude, longitude, limit);
+    public List<ParkingLocationResponseDto> getNearbyParkingByRoadDistance(double latitude, double longitude, int limit) {
+        return dijkstraService.findNearestByRoadDistance(latitude, longitude, limit);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ParkingLocationResponseDto getNearestParking(double latitude, double longitude) {
-        return dijkstraService.findNearestParking(latitude, longitude);
+    public ParkingLocationResponseDto getSingleNearestParking(double latitude, double longitude) {
+        return dijkstraService.findSingleNearestParking(latitude, longitude);
     }
 
     @Override
@@ -230,7 +233,7 @@ public class ParkingServiceImpl implements ParkingService {
 
         return slots
                 .stream()
-                .map(this::toSlotResponseDto)
+                .map(slot -> toSlotResponseDto(slot, false))
                 .toList();
     }
 
@@ -241,8 +244,64 @@ public class ParkingServiceImpl implements ParkingService {
 
         return parkingSlotRepository.findByLocationAndDeletedAtIsNull(parking)
                 .stream()
-                .map(this::toSlotResponseDto)
+                .map(slot -> toSlotResponseDto(slot, true))
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public ParkingSlotResponseDto updateSlotStatus(
+            UUID parkingLocationId,
+            UUID slotId,
+            SlotStatusUpdateRequestDto request,
+            String currentUserEmail) {
+        ParkingLocation parking = resolveOwnedParking(parkingLocationId, currentUserEmail);
+
+        ParkingSlot slot = parkingSlotRepository.findByIdAndDeletedAtIsNullForUpdate(slotId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Parking slot not found."
+                ));
+
+        if (!slot.getLocation().getId().equals(parking.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Selected slot does not belong to this parking location."
+            );
+        }
+
+        ParkingSlotStatus requestedStatus = parseSlotStatus(request.getStatus());
+
+        if (requestedStatus == ParkingSlotStatus.MAINTENANCE) {
+            if (slot.getStatus() != ParkingSlotStatus.AVAILABLE) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Only available slots can be marked as maintenance."
+                );
+            }
+
+            slot.markMaintenance();
+            decrementAvailableSlotCount(parking, slot.getVehicleType());
+        } else if (requestedStatus == ParkingSlotStatus.AVAILABLE) {
+            if (slot.getStatus() != ParkingSlotStatus.MAINTENANCE) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Only maintenance slots can be marked as available."
+                );
+            }
+
+            slot.markAvailable();
+            incrementAvailableSlotCount(parking, slot.getVehicleType());
+        } else {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid slot status transition."
+            );
+        }
+
+        parkingLocationRepository.save(parking);
+        ParkingSlot savedSlot = parkingSlotRepository.save(slot);
+        return toSlotResponseDto(savedSlot, true);
     }
 
     private User resolveVendor(String email) {
@@ -292,7 +351,7 @@ public class ParkingServiceImpl implements ParkingService {
 
     private boolean matchesArea(String area, ParkingLocation location) {
         if ("thamel".equalsIgnoreCase(area)) {
-            return DijkstraService.AreaRestriction.isInThamel(
+            return DijkstraService.ThamelBoundary.isInThamel(
                     location.getLatitude(),
                     location.getLongitude()
             );
@@ -309,6 +368,35 @@ public class ParkingServiceImpl implements ParkingService {
                     HttpStatus.BAD_REQUEST,
                     "Invalid vehicle type. Allowed values: TWO_WHEELER, FOUR_WHEELER."
             );
+        }
+    }
+
+    private ParkingSlotStatus parseSlotStatus(String status) {
+        try {
+            return ParkingSlotStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid slot status. Allowed values: AVAILABLE, MAINTENANCE."
+            );
+        }
+    }
+
+    private void decrementAvailableSlotCount(ParkingLocation location, VehicleType vehicleType) {
+        if (vehicleType == VehicleType.FOUR_WHEELER) {
+            location.setAvailableFourWheelerSlots(Math.max(0, location.getAvailableFourWheelerSlots() - 1));
+        } else {
+            location.setAvailableTwoWheelerSlots(Math.max(0, location.getAvailableTwoWheelerSlots() - 1));
+        }
+    }
+
+    private void incrementAvailableSlotCount(ParkingLocation location, VehicleType vehicleType) {
+        if (vehicleType == VehicleType.FOUR_WHEELER) {
+            location.setAvailableFourWheelerSlots(
+                    Math.min(location.getTotalFourWheelerSlots(), location.getAvailableFourWheelerSlots() + 1));
+        } else {
+            location.setAvailableTwoWheelerSlots(
+                    Math.min(location.getTotalTwoWheelerSlots(), location.getAvailableTwoWheelerSlots() + 1));
         }
     }
 
@@ -337,12 +425,14 @@ public class ParkingServiceImpl implements ParkingService {
         if (location.getVendor() != null) {
             dto.setVendorId(location.getVendor().getId());
             dto.setVendorName(location.getVendor().getName());
+
+
         }
 
         return dto;
     }
 
-    private ParkingSlotResponseDto toSlotResponseDto(ParkingSlot slot) {
+    private ParkingSlotResponseDto toSlotResponseDto(ParkingSlot slot, boolean includeActiveBooking) {
         ParkingSlotResponseDto dto = new ParkingSlotResponseDto();
 
         dto.setId(slot.getId());
@@ -354,6 +444,32 @@ public class ParkingServiceImpl implements ParkingService {
             dto.setParkingLocationId(slot.getLocation().getId());
             dto.setParkingLocationName(slot.getLocation().getName());
         }
+
+        if (includeActiveBooking && (slot.getStatus() == ParkingSlotStatus.RESERVED
+                || slot.getStatus() == ParkingSlotStatus.OCCUPIED)) {
+            bookingRepository.findFirstBySlotAndStatusAndDeletedAtIsNullOrderByStartTimeDesc(
+                    slot,
+                    BookingStatus.CONFIRMED
+            ).ifPresent(booking -> dto.setActiveBooking(toActiveBookingSummary(booking)));
+        }
+
+        return dto;
+    }
+
+    private ParkingSlotResponseDto.ActiveBookingSummaryDto toActiveBookingSummary(Booking booking) {
+        ParkingSlotResponseDto.ActiveBookingSummaryDto dto =
+                new ParkingSlotResponseDto.ActiveBookingSummaryDto();
+
+        dto.setBookingId(booking.getId());
+        if (booking.getDriver() != null) {
+            dto.setDriverName(booking.getDriver().getName());
+        }
+        dto.setCustomerName(booking.getCustomerName());
+        dto.setCustomerPhone(booking.getCustomerPhone());
+        dto.setVehicleNumber(booking.getVehicleNumber());
+        dto.setStartTime(booking.getStartTime());
+        dto.setEndTime(booking.getEndTime());
+        dto.setStatus(booking.getStatus());
 
         return dto;
     }

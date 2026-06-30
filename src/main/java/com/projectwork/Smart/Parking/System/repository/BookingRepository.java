@@ -34,6 +34,14 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
         List<Booking> findBySlot_IdAndDeletedAtIsNull(UUID slotId);
 
+        Optional<Booking> findFirstBySlotAndStatusAndDeletedAtIsNullOrderByStartTimeDesc(
+                        ParkingSlot slot,
+                        BookingStatus status);
+
+        Optional<Booking> findFirstBySlot_IdAndStatusAndDeletedAtIsNullOrderByStartTimeDesc(
+                        UUID slotId,
+                        BookingStatus status);
+
         List<Booking> findByStatusAndDeletedAtIsNull(BookingStatus status);
 
         List<Booking> findByDeletedAtIsNull();

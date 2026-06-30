@@ -1,6 +1,7 @@
 package com.projectwork.Smart.Parking.System.service;
 
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.SlotStatusUpdateRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.UpdateSlotsRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingSlotResponseDto;
@@ -21,12 +22,12 @@ public interface ParkingService {
     /**
      * Finds nearby parking locations by direct coordinate distance.
      */
-    List<ParkingLocationResponseDto> getNearbyParking(double latitude, double longitude, int limit);
+    List<ParkingLocationResponseDto> getNearbyParkingByRoadDistance(double latitude, double longitude, int limit);
 
     /**
      * Returns the nearest parking location by direct coordinate distance.
      */
-    ParkingLocationResponseDto getNearestParking(double latitude, double longitude);
+    ParkingLocationResponseDto getSingleNearestParking(double latitude, double longitude);
 
     /**
      * Fetches a parking location by id.
@@ -68,4 +69,13 @@ public interface ParkingService {
      * Returns all slot information for a vendor-owned location.
      */
     List<ParkingSlotResponseDto> getVendorSlots(UUID parkingLocationId, String currentUserEmail);
+
+    /**
+     * Updates vendor-controlled maintenance status for a slot.
+     */
+    ParkingSlotResponseDto updateSlotStatus(
+            UUID parkingLocationId,
+            UUID slotId,
+            SlotStatusUpdateRequestDto request,
+            String currentUserEmail);
 }

@@ -17,6 +17,18 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres-init:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: postgres
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+    networks:
+      - smart-parking-dev-network
+    command: >
+      sh -c "psql -h postgresdb -U postgres -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname = 'smart_parking'\" | grep -q 1 || psql -h postgresdb -U postgres -d postgres -c \"CREATE DATABASE smart_parking\""
+
   backend:
     build:
       context: .
@@ -29,8 +41,8 @@ services:
     env_file:
       - .env.backend.dev
     depends_on:
-      postgresdb:
-        condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
     networks:
       - smart-parking-dev-network
     healthcheck:

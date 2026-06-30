@@ -12,6 +12,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -37,10 +38,24 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Booking extends BaseEntity {
 
-    @NotNull(message = "Driver is required.")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "driver_id", nullable = false)
+    @JoinColumn(name = "driver_id")
     private User driver;
+
+    @Size(max = 100, message = "Customer name must not exceed 100 characters.")
+    @Column(name = "customer_name", length = 100)
+    private String customerName;
+
+    @Size(max = 20, message = "Customer phone must not exceed 20 characters.")
+    @Column(name = "customer_phone", length = 20)
+    private String customerPhone;
+
+    @Size(max = 30, message = "Vehicle number must not exceed 30 characters.")
+    @Column(name = "vehicle_number", length = 30)
+    private String vehicleNumber;
+
+    @Column(name = "walk_in", nullable = false, columnDefinition = "boolean default false")
+    private boolean walkIn = false;
 
     @NotNull(message = "Parking slot is required.")
     @ManyToOne(fetch = FetchType.LAZY)
@@ -86,6 +101,18 @@ public class Booking extends BaseEntity {
 
         if (totalAmount == null) {
             totalAmount = BigDecimal.ZERO;
+        }
+
+        if (customerName != null) {
+            customerName = customerName.trim();
+        }
+
+        if (customerPhone != null) {
+            customerPhone = customerPhone.trim();
+        }
+
+        if (vehicleNumber != null) {
+            vehicleNumber = vehicleNumber.trim();
         }
 
         if (startTime != null && endTime != null && !endTime.isAfter(startTime)) {

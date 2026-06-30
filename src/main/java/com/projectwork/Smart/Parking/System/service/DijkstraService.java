@@ -32,10 +32,10 @@ public class DijkstraService {
         this.graphService = graphService;
     }
 
-    /**
-     * Finds available Thamel parking locations by shortest road-graph distance.
-     */
-    public List<ParkingLocationResponseDto> findClosestInThamel(
+
+     // Finds available Thamel parking locations by shortest road-graph distance.
+
+    public List<ParkingLocationResponseDto> findNearestByRoadDistance(
             double userLat,
             double userLon,
             Integer maxSpots) {
@@ -44,19 +44,19 @@ public class DijkstraService {
         List<ParkingLocation> availableLocations = parkingLocationRepository.findByDeletedAtIsNull()
                 .stream()
                 .filter(location -> location.getAvailableSlots() != null && location.getAvailableSlots() > 0)
-                .filter(location -> AreaRestriction.isInThamel(location.getLatitude(), location.getLongitude()))
+                .filter(location -> ThamelBoundary.isInThamel(location.getLatitude(), location.getLongitude()))
                 .toList();
 
         if (availableLocations.isEmpty()) {
             return Collections.emptyList();
         }
 
-        Node userNode = findNearestGraphNode(userLat, userLon);
+        Node userNode = snapToNearestNode(userLat, userLon);
         Map<Node, Double> distances = dijkstra(userNode, graphService.getGraph());
 
         return availableLocations.stream()
                 .map(location -> {
-                    Node parkingNode = findNearestGraphNode(location.getLatitude(), location.getLongitude());
+                    Node parkingNode = snapToNearestNode(location.getLatitude(), location.getLongitude());
                     double shortestDistance = distances.getOrDefault(parkingNode, Double.MAX_VALUE);
 
                     ParkingLocationResponseDto dto = mapToDto(location);
@@ -72,7 +72,7 @@ public class DijkstraService {
     /**
      * Finds available parking locations by straight-line GPS distance.
      */
-    public List<ParkingLocationResponseDto> findClosestByGps(
+    public List<ParkingLocationResponseDto> findNearestByGpsDistance(
             double userLat,
             double userLon,
             Integer maxSpots) {
@@ -106,8 +106,8 @@ public class DijkstraService {
     /**
      * Returns the nearest available Thamel parking location.
      */
-    public ParkingLocationResponseDto findNearestParking(double latitude, double longitude) {
-        List<ParkingLocationResponseDto> closestLocations = findClosestInThamel(latitude, longitude, 1);
+    public ParkingLocationResponseDto findSingleNearestParking(double latitude, double longitude) {
+        List<ParkingLocationResponseDto> closestLocations = findNearestByRoadDistance(latitude, longitude, 1);
         return closestLocations.isEmpty() ? null : closestLocations.get(0);
     }
 
@@ -173,6 +173,7 @@ public class DijkstraService {
                 if (newDistance < distances.getOrDefault(edge.to, Double.MAX_VALUE)) {
                     distances.put(edge.to, newDistance);
                     priorityQueue.add(new NodeDistance(edge.to, newDistance));
+
                 }
             }
         }
@@ -180,10 +181,10 @@ public class DijkstraService {
         return distances;
     }
 
-    /**
-     * Snaps arbitrary coordinates to the nearest known graph node.
-     */
-    private Node findNearestGraphNode(double latitude, double longitude) {
+
+     //Snaps arbitrary coordinates to the nearest known graph node.
+
+    private Node snapToNearestNode(double latitude, double longitude) {
         return graphService.getGraph()
                 .keySet()
                 .stream()
@@ -211,10 +212,10 @@ public class DijkstraService {
         return earthRadiusInKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    /**
-     * Simple bounding-box check for the Thamel area used by the road-graph search.
-     */
-    public static class AreaRestriction {
+
+     // Simple bounding-box check for the Thamel area used by the road-graph search.
+
+    public static class ThamelBoundary {
         private static final double THAMEL_MIN_LAT = 27.7100;
         private static final double THAMEL_MAX_LAT = 27.7250;
         private static final double THAMEL_MIN_LON = 85.3100;
@@ -229,17 +230,15 @@ public class DijkstraService {
     }
 
     /**
-     * Priority-queue entry for Dijkstra's algorithm.
-     */
-    private static class NodeDistance {
-        private final Node node;
-        private final double distance;
+         * Priority-queue entry for Dijkstra's algorithm.
+         */
+        private record NodeDistance(Node node, double distance) implements Comparable<NodeDistance> {
 
-        private NodeDistance(Node node, double distance) {
-            this.node = node;
-            this.distance = distance;
+        @Override
+            public int compareTo(NodeDistance other) {
+                return Double.compare(this.distance, other.distance);
+            }
         }
-    }
 
     /**
      * Graph vertex with stable identity by id.
