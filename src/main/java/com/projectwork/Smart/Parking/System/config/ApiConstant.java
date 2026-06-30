@@ -37,7 +37,7 @@ public final class ApiConstant {
     // DELETE /api/parking-locations/{id} → remove location (VENDOR)
     public static final String PARKING_BASE = API_BASE + "/parking-locations";
     public static final String PARKING_NEARBY = "/nearby";
-    public static final String PARKING_NEAREST = "/nearest";
+    public static final String PARKING_NEARBY_DIJKISTRA = "/nearby-thamel";
     public static final String PARKING_MINE = "/mine";
     public static final String PARKING_BY_ID = "/{id}";
     public static final String PARKING_SLOTS = "/{id}/slots";

@@ -113,7 +113,7 @@ public class ParkingController extends BaseController {
     /**
      * Finds closest Thamel locations using the road-graph/Dijkstra distance model.
      */
-    @GetMapping("")
+    @GetMapping(ApiConstant.PARKING_NEARBY_DIJKISTRA)
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findNearestByRoadDistance(
             @RequestParam double latitude,
             @RequestParam double longitude,
@@ -132,18 +132,18 @@ public class ParkingController extends BaseController {
     /**
      * Returns the single nearest Thamel parking location.
      */
-    @GetMapping("/thamel/nearest")
-    public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> findNearestInThamel(
-            @RequestParam double latitude,
-            @RequestParam double longitude) {
-        ParkingLocationResponseDto nearest = dijkstraService.findSingleNearestParking(latitude, longitude);
+    // @GetMapping("/thamel/nearest")
+    // public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> findNearestInThamel(
+    //         @RequestParam double latitude,
+    //         @RequestParam double longitude) {
+    //     ParkingLocationResponseDto nearest = dijkstraService.findSingleNearestParking(latitude, longitude);
 
-        if (nearest == null) {
-            return okResponse("No parking spots available in Thamel.", null);
-        }
+    //     if (nearest == null) {
+    //         return okResponse("No parking spots available in Thamel.", null);
+    //     }
 
-        return okResponse("Nearest parking in Thamel found successfully!", nearest);
-    }
+    //     return okResponse("Nearest parking in Thamel found successfully!", nearest);
+    // }
 
     /**
      * Lists parking locations owned by the authenticated vendor.
