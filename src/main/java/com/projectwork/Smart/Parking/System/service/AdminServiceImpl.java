@@ -9,6 +9,7 @@ import com.projectwork.Smart.Parking.System.entity.UserRole;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,20 +24,24 @@ import java.util.UUID;
  * Implements admin workflows against active, non-soft-deleted records.
  */
 @Service
+@Slf4j
 public class AdminServiceImpl implements AdminService {
 
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final ParkingLocationRepository parkingLocationRepository;
+    private final EmailService emailService;
 
     public AdminServiceImpl(
             BookingRepository bookingRepository,
             UserRepository userRepository,
-            ParkingLocationRepository parkingLocationRepository
+            ParkingLocationRepository parkingLocationRepository,
+            EmailService emailService
     ) {
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.parkingLocationRepository = parkingLocationRepository;
+        this.emailService = emailService;
     }
 
     @Override
@@ -133,7 +138,17 @@ public class AdminServiceImpl implements AdminService {
         }
 
         vendor.setApproved(true);
-        return toUserResponse(userRepository.save(vendor));
+        User savedVendor = userRepository.save(vendor);
+
+        log.info("Vendor {} approved; attempting approval email to '{}'", savedVendor.getId(), savedVendor.getEmail());
+        try {
+            emailService.sendVendorApprovalEmail(savedVendor);
+            log.info("Triggered vendor approval email for vendor {}", savedVendor.getId());
+        } catch (Exception e) {
+            log.error("Could not trigger vendor approval email for vendor {}", savedVendor.getId(), e);
+        }
+
+        return toUserResponse(savedVendor);
     }
 
     @Override
