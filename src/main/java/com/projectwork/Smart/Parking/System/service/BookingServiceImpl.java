@@ -138,7 +138,17 @@ public class BookingServiceImpl implements BookingService {
                 BookingResponseDto response = mapToResponse(savedBooking);
                 response.setMessage("Booking created successfully.");
 
-                sendConfirmationEmailAsync(response, driver.getEmail());
+                String driverEmail = driver.getEmail();
+                log.info("Booking {} reached CONFIRMED state; attempting confirmation email for driver email '{}'",
+                                savedBooking.getId(), driverEmail);
+
+                try {
+                        emailService.sendBookingConfirmation(response, driverEmail);
+                        log.info("Triggered confirmation email for booking {}", savedBooking.getId());
+                } catch (Exception e) {
+                        log.error("Could not trigger confirmation email for booking {}", savedBooking.getId(), e);
+                }
+
                 return response;
         }
 
@@ -220,6 +230,11 @@ public class BookingServiceImpl implements BookingService {
 
                 Booking savedBooking = bookingRepository.save(booking);
                 createWalkInPayment(savedBooking, paymentMethod);
+
+                String walkInRecipientEmail = vendor.getEmail();
+                log.info("Walk-in booking {} persisted as CONFIRMED; dispatching confirmation email to '{}'",
+                                savedBooking.getId(), walkInRecipientEmail);
+                dispatchConfirmationEmail(savedBooking, walkInRecipientEmail);
 
                 BookingResponseDto response = mapToResponse(savedBooking);
                 response.setMessage("Walk-in booking created successfully.");
@@ -508,11 +523,26 @@ public class BookingServiceImpl implements BookingService {
                 }
         }
 
-        private void sendConfirmationEmailAsync(BookingResponseDto bookingResponseDto, String driverEmail) {
+        private void dispatchConfirmationEmail(Booking booking, String recipientEmail) {
+                if (booking == null) {
+                        log.warn("Cannot dispatch booking confirmation email because the booking object is null.");
+                        return;
+                }
+
+                if (recipientEmail == null || recipientEmail.isBlank()) {
+                        log.warn("Skipping booking confirmation email for booking {} because the recipient email is blank",
+                                        booking.getId());
+                        return;
+                }
+
                 try {
-                        emailService.sendBookingConfirmation(bookingResponseDto, driverEmail);
+                        BookingResponseDto bookingResponseDto = mapToResponse(booking);
+                        bookingResponseDto.setMessage("Booking created successfully.");
+                        log.info("Calling EmailService for booking {} with recipient '{}'", booking.getId(), recipientEmail);
+                        emailService.sendBookingConfirmation(bookingResponseDto, recipientEmail);
+                        log.info("EmailService invocation completed for booking {}", booking.getId());
                 } catch (Exception e) {
-                        log.warn("Booking confirmation email could not be queued for {}", driverEmail, e);
+                        log.error("Booking confirmation email dispatch failed for booking {}", booking.getId(), e);
                 }
         }
 

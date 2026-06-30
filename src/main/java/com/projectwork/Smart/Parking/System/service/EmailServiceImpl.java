@@ -3,15 +3,16 @@ package com.projectwork.Smart.Parking.System.service;
 import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,20 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
 
+    @Value("${spring.mail.username:}")
+    private String mailUsername;
+
+    @Value("${spring.mail.password:}")
+    private String mailPassword;
+
+    @PostConstruct
+    public void logMailConfiguration() {
+        boolean hasUsername = mailUsername != null && !mailUsername.isBlank();
+        boolean hasPassword = mailPassword != null && !mailPassword.isBlank();
+        log.info("Email service startup: MAIL_USERNAME configured={}, MAIL_PASSWORD configured={}",
+                hasUsername, hasPassword);
+    }
+
     @Override
     @Async
     public void sendBookingConfirmation(BookingResponseDto booking, String toEmail) {
@@ -29,6 +44,8 @@ public class EmailServiceImpl implements EmailService {
             log.warn("Skipping booking confirmation email because booking or recipient email is missing.");
             return;
         }
+
+        log.info("Attempting to send booking confirmation email to {} for booking {}", toEmail, booking.getBookingId());
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -67,10 +84,10 @@ public class EmailServiceImpl implements EmailService {
                     <title>Booking Confirmed</title>
                 </head>
                 <body style=\"margin:0; padding:0; background-color:#f4f7fb; font-family:Arial, sans-serif; color:#1f2937;\">
-                    <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"background-color:#f4f7fb; padding:24px;\">
+                    <table role=\"presentation\" width=\"100%%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"background-color:#f4f7fb; padding:24px;\">
                         <tr>
                             <td align=\"center\">
-                                <table role=\"presentation\" width=\"100%\" max-width=\"640px\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.08);\">
+                                <table role=\"presentation\" width=\"100%%\" max-width=\"640px\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.08);\">
                                     <tr>
                                         <td style=\"background-color:#1e3a5f; padding:24px 32px; color:#ffffff;\">
                                             <h1 style=\"margin:0; font-size:24px;\">Smart Parking System</h1>
@@ -80,7 +97,7 @@ public class EmailServiceImpl implements EmailService {
                                         <td style=\"padding:32px;\">
                                             <p style=\"margin:0 0 12px; font-size:18px;\">Hello <strong>%s</strong>, your booking has been confirmed!</p>
                                             <p style=\"margin:0 0 24px; color:#4b5563;\">Your parking reservation is ready. Please find your booking details below.</p>
-                                            <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"10\" border=\"1\" style=\"border-collapse:collapse; border-color:#d1d5db; font-size:14px;\">
+                                            <table role=\"presentation\" width=\"100%%\" cellspacing=\"0\" cellpadding=\"10\" border=\"1\" style=\"border-collapse:collapse; border-color:#d1d5db; font-size:14px;\">
                                                 <tr style=\"background-color:#f3f4f6;\">
                                                     <th align=\"left\" style=\"padding:10px; border:1px solid #d1d5db;\">Field</th>
                                                     <th align=\"left\" style=\"padding:10px; border:1px solid #d1d5db;\">Value</th>
