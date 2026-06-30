@@ -19,6 +19,11 @@ public class BookingResponseDto {
     private UUID driverId;
     private String driverName;
 
+    private String customerName;
+    private String customerPhone;
+    private String vehicleNumber;
+    private boolean walkIn;
+
     private UUID parkingLocationId;
     private String parkingLocationName;
 
