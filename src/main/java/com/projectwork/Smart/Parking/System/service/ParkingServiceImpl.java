@@ -131,6 +131,9 @@ public class ParkingServiceImpl implements ParkingService {
         parking.setTotalTwoWheelerSlots(totalTwoWheelerSlots);
         parking.setAvailableTwoWheelerSlots(totalTwoWheelerSlots);
 
+        parking.setFourWheelerRatePerHour(request.getFourWheelerRatePerHour());
+        parking.setTwoWheelerRatePerHour(request.getTwoWheelerRatePerHour());
+
         parking.setVendor(vendor);
 
         ParkingLocation savedLocation = parkingLocationRepository.save(parking);
@@ -154,6 +157,8 @@ public class ParkingServiceImpl implements ParkingService {
         parking.setAddress(request.getAddress().trim());
         parking.setLatitude(request.getLatitude());
         parking.setLongitude(request.getLongitude());
+        parking.setFourWheelerRatePerHour(request.getFourWheelerRatePerHour());
+        parking.setTwoWheelerRatePerHour(request.getTwoWheelerRatePerHour());
 
         /*
          * This updates only location details.
@@ -326,6 +331,8 @@ public class ParkingServiceImpl implements ParkingService {
 
         dto.setTotalSlots(location.getTotalSlots());
         dto.setAvailableSlots(location.getAvailableSlots());
+        dto.setFourWheelerRatePerHour(location.getFourWheelerRatePerHour());
+        dto.setTwoWheelerRatePerHour(location.getTwoWheelerRatePerHour());
 
         if (location.getVendor() != null) {
             dto.setVendorId(location.getVendor().getId());
