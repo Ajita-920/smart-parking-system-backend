@@ -11,6 +11,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import com.projectwork.Smart.Parking.System.entity.User;
 
 import java.time.format.DateTimeFormatter;
 
@@ -62,6 +63,76 @@ public class EmailServiceImpl implements EmailService {
         } catch (Exception e) {
             log.error("Unexpected error while sending booking confirmation email to {} for booking {}", toEmail, booking.getBookingId(), e);
         }
+    }
+
+    @Override
+    @Async
+    public void sendVendorApprovalEmail(User vendor) {
+        if (vendor == null || vendor.getEmail() == null || vendor.getEmail().isBlank()) {
+            log.warn("Skipping vendor approval email because vendor or recipient email is missing.");
+            return;
+        }
+
+        log.info("Attempting to send vendor approval email to {}", vendor.getEmail());
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(vendor.getEmail());
+            helper.setSubject("Vendor Account Approved – Smart Parking System");
+            helper.setText(buildVendorApprovalHtml(vendor), true);
+
+            mailSender.send(message);
+            log.info("Vendor approval email sent to {}", vendor.getEmail());
+        } catch (MessagingException e) {
+            log.error("Failed to send vendor approval email to {}", vendor.getEmail(), e);
+        } catch (Exception e) {
+            log.error("Unexpected error while sending vendor approval email to {}", vendor.getEmail(), e);
+        }
+    }
+
+    private String buildVendorApprovalHtml(User vendor) {
+        String vendorName = vendor.getName() != null && !vendor.getName().isBlank()
+                ? vendor.getName()
+                : "Valued Vendor";
+
+        return """
+                <!DOCTYPE html>
+                <html lang=\"en\">
+                <head>
+                    <meta charset=\"UTF-8\">
+                    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+                    <title>Vendor Account Approved</title>
+                </head>
+                <body style=\"margin:0; padding:0; background-color:#f4f7fb; font-family:Arial, sans-serif; color:#1f2937;\">
+                    <table role=\"presentation\" width=\"640\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"margin:0 auto; background-color:#f4f7fb; padding:24px;\">
+                        <tr>
+                            <td align=\"center\">
+                                <table role=\"presentation\" width=\"100%%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.08);\">
+                                    <tr>
+                                        <td style=\"background-color:#1e3a5f; padding:24px 32px; color:#ffffff;\">
+                                            <h1 style=\"margin:0; font-size:24px;\">Smart Parking System</h1>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style=\"padding:32px;\">
+                                            <p style=\"margin:0 0 12px; font-size:18px;\">Hello <strong>%s</strong>, your vendor account has been approved!</p>
+                                            <p style=\"margin:0; color:#4b5563; line-height:1.6;\">You can now list parking locations and manage bookings on Smart Parking System.</p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style=\"background-color:#f3f4f6; padding:20px 32px; font-size:13px; color:#6b7280; text-align:center;\">
+                                            Thank you for using Smart Parking System. Please do not reply to this email.
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(vendorName);
     }
 
     private String buildBookingConfirmationHtml(BookingResponseDto booking) {
