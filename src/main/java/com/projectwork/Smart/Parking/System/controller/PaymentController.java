@@ -31,7 +31,10 @@ public class PaymentController extends BaseController {
     public ResponseEntity<ApiResponse<PaymentResponseDto>> initiateKhaltiPayment(
             @Valid @RequestBody PaymentRequestDto request) {
 
+        System.out.println("Initiating Khalti payment with request (I1): " + request);
         PaymentResponseDto response = paymentService.initiateKhaltiPayment(request);
+
+        System.out.println("Khalti payment initiated successfully with response (R1): " + response);
         return okResponse("Khalti payment initiated successfully!", response);
     }
 

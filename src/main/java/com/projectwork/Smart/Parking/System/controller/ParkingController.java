@@ -80,40 +80,40 @@ public class ParkingController extends BaseController {
     /**
      * Returns the nearest available parking location to the supplied coordinates.
      */
-    @GetMapping(ApiConstant.PARKING_NEAREST)
-    public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> getSingleNearestParking(
-            @RequestParam double lat,
-            @RequestParam double lng) {
-        ParkingLocationResponseDto nearest = parkingService.getSingleNearestParking(lat, lng);
+    // @GetMapping(ApiConstant.PARKING_NEAREST)
+    // public ResponseEntity<ApiResponse<ParkingLocationResponseDto>> getSingleNearestParking(
+    //         @RequestParam double lat,
+    //         @RequestParam double lng) {
+    //     ParkingLocationResponseDto nearest = parkingService.getSingleNearestParking(lat, lng);
 
-        if (nearest == null) {
-            return okResponse("No parking spots found near your location.", null);
-        }
+    //     if (nearest == null) {
+    //         return okResponse("No parking spots found near your location.", null);
+    //     }
 
-        return okResponse("Nearest parking spot found!", nearest);
-    }
+    //     return okResponse("Nearest parking spot found!", nearest);
+    // }
 
     /**
      * Finds closest locations using direct GPS distance.
      */
-    @GetMapping("/nearby-gps")
-    public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findNearestByGpsDistance(
-            @RequestParam double latitude,
-            @RequestParam double longitude,
-            @RequestParam(defaultValue = "20") int maxSpots) {
-        List<ParkingLocationResponseDto> spots = dijkstraService.findNearestByGpsDistance(latitude, longitude, maxSpots);
+    // @GetMapping("/nearby-gps")
+    // public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findNearestByGpsDistance(
+    //         @RequestParam double latitude,
+    //         @RequestParam double longitude,
+    //         @RequestParam(defaultValue = "20") int maxSpots) {
+    //     List<ParkingLocationResponseDto> spots = dijkstraService.findNearestByGpsDistance(latitude, longitude, maxSpots);
 
-        if (spots.isEmpty()) {
-            return okResponse("No parking spots available.", spots);
-        }
+    //     if (spots.isEmpty()) {
+    //         return okResponse("No parking spots available.", spots);
+    //     }
 
-        return okResponse("Found " + spots.size() + " parking spots sorted by GPS distance.", spots);
-    }
+    //     return okResponse("Found " + spots.size() + " parking spots sorted by GPS distance.", spots);
+    // }
 
     /**
      * Finds closest Thamel locations using the road-graph/Dijkstra distance model.
      */
-    @GetMapping("/thamel/closest")
+    @GetMapping("")
     public ResponseEntity<ApiResponse<List<ParkingLocationResponseDto>>> findNearestByRoadDistance(
             @RequestParam double latitude,
             @RequestParam double longitude,

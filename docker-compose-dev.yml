@@ -58,4 +58,4 @@ volumes:
 
 networks:
   smart-parking-dev-network:
-    name: smart-parking-dev-network
+    external: true
