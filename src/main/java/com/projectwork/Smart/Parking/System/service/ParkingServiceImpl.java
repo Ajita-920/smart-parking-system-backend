@@ -326,6 +326,8 @@ public class ParkingServiceImpl implements ParkingService {
         if (location.getVendor() != null) {
             dto.setVendorId(location.getVendor().getId());
             dto.setVendorName(location.getVendor().getName());
+
+
         }
 
         return dto;

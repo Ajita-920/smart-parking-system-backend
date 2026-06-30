@@ -173,6 +173,7 @@ public class DijkstraService {
                 if (newDistance < distances.getOrDefault(edge.to, Double.MAX_VALUE)) {
                     distances.put(edge.to, newDistance);
                     priorityQueue.add(new NodeDistance(edge.to, newDistance));
+
                 }
             }
         }
