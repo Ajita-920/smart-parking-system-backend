@@ -21,12 +21,12 @@ public interface ParkingService {
     /**
      * Finds nearby parking locations by direct coordinate distance.
      */
-    List<ParkingLocationResponseDto> getNearbyParking(double latitude, double longitude, int limit);
+    List<ParkingLocationResponseDto> getNearbyParkingByRoadDistance(double latitude, double longitude, int limit);
 
     /**
      * Returns the nearest parking location by direct coordinate distance.
      */
-    ParkingLocationResponseDto getNearestParking(double latitude, double longitude);
+    ParkingLocationResponseDto getSingleNearestParking(double latitude, double longitude);
 
     /**
      * Fetches a parking location by id.

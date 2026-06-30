@@ -21,10 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Implements parking search, vendor ownership checks, slot creation, and slot
- * availability updates.
- */
 @Service
 public class ParkingServiceImpl implements ParkingService {
 
@@ -58,14 +54,14 @@ public class ParkingServiceImpl implements ParkingService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ParkingLocationResponseDto> getNearbyParking(double latitude, double longitude, int limit) {
-        return dijkstraService.findClosestInThamel(latitude, longitude, limit);
+    public List<ParkingLocationResponseDto> getNearbyParkingByRoadDistance(double latitude, double longitude, int limit) {
+        return dijkstraService.findNearestByRoadDistance(latitude, longitude, limit);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ParkingLocationResponseDto getNearestParking(double latitude, double longitude) {
-        return dijkstraService.findNearestParking(latitude, longitude);
+    public ParkingLocationResponseDto getSingleNearestParking(double latitude, double longitude) {
+        return dijkstraService.findSingleNearestParking(latitude, longitude);
     }
 
     @Override
@@ -287,7 +283,7 @@ public class ParkingServiceImpl implements ParkingService {
 
     private boolean matchesArea(String area, ParkingLocation location) {
         if ("thamel".equalsIgnoreCase(area)) {
-            return DijkstraService.AreaRestriction.isInThamel(
+            return DijkstraService.ThamelBoundary.isInThamel(
                     location.getLatitude(),
                     location.getLongitude()
             );
