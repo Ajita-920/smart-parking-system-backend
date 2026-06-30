@@ -33,6 +33,11 @@ public interface AdminService {
     UserResponseDto banUser(UUID id);
 
     /**
+     * Allows a previously banned non-admin user to authenticate again.
+     */
+    UserResponseDto unbanUser(UUID id);
+
+    /**
      * Soft-deletes a non-admin user.
      */
     void deleteUser(UUID id);

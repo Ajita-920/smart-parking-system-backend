@@ -76,6 +76,16 @@ public class AdminController extends BaseController {
     }
 
     /**
+     * Unbans a non-admin user so they can authenticate again.
+     */
+    @PutMapping(ApiConstant.ADMIN_USER_UNBAN)
+    public ResponseEntity<ApiResponse<UserResponseDto>> unbanUser(@PathVariable UUID id) {
+        return okResponse(
+                "User unbanned successfully!",
+                adminService.unbanUser(id));
+    }
+
+    /**
      * Soft-deletes a non-admin user and related vendor parking locations when
      * applicable.
      */
