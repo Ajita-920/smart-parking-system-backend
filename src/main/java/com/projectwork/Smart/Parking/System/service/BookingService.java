@@ -30,6 +30,11 @@ public interface BookingService {
     BookingResponseDto getBookingById(UUID id, String currentUserEmail);
 
     /**
+     * Returns bookings for parking locations owned by the current vendor.
+     */
+    List<BookingResponseDto> getVendorBookings(String currentUserEmail, UUID locationId);
+
+    /**
      * Cancels a driver's booking and releases the reserved slot when applicable.
      */
     BookingCancelResponseDto cancelBooking(UUID bookingId, String email);

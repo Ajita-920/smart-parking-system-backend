@@ -3,6 +3,7 @@ package com.projectwork.Smart.Parking.System.dto.response;
 import com.projectwork.Smart.Parking.System.entity.BookingStatus;
 import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
 import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
+import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
 import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import lombok.Data;
 
@@ -29,6 +30,7 @@ public class BookingResponseDto {
 
     private UUID slotId;
     private String slotNumber;
+    private ParkingSlotStatus slotStatus;
 
     private VehicleType vehicleType;
 

@@ -231,6 +231,11 @@ public class AdminServiceImpl implements AdminService {
             dto.setDriverName(booking.getDriver().getName());
         }
 
+        dto.setCustomerName(booking.getCustomerName());
+        dto.setCustomerPhone(booking.getCustomerPhone());
+        dto.setVehicleNumber(booking.getVehicleNumber());
+        dto.setWalkIn(booking.isWalkIn());
+
         if (booking.getParkingLocation() != null) {
             dto.setParkingLocationId(booking.getParkingLocation().getId());
             dto.setParkingLocationName(booking.getParkingLocation().getName());
@@ -239,12 +244,14 @@ public class AdminServiceImpl implements AdminService {
         if (booking.getSlot() != null) {
             dto.setSlotId(booking.getSlot().getId());
             dto.setSlotNumber(booking.getSlot().getSlotNumber());
+            dto.setSlotStatus(booking.getSlot().getStatus());
             dto.setVehicleType(booking.getSlot().getVehicleType());
         }
 
         dto.setStatus(booking.getStatus());
         dto.setStartTime(booking.getStartTime());
         dto.setEndTime(booking.getEndTime());
+        dto.setCancelledAt(booking.getCancelledAt());
         dto.setTotalAmount(booking.getTotalAmount());
 
         return dto;

@@ -446,10 +446,14 @@ public class ParkingServiceImpl implements ParkingService {
         }
 
         if (includeActiveBooking && (slot.getStatus() == ParkingSlotStatus.RESERVED
+                || slot.getStatus() == ParkingSlotStatus.BOOKED
                 || slot.getStatus() == ParkingSlotStatus.OCCUPIED)) {
+            BookingStatus activeStatus = slot.getStatus() == ParkingSlotStatus.RESERVED
+                    ? BookingStatus.PENDING
+                    : BookingStatus.CONFIRMED;
             bookingRepository.findFirstBySlotAndStatusAndDeletedAtIsNullOrderByStartTimeDesc(
                     slot,
-                    BookingStatus.CONFIRMED
+                    activeStatus
             ).ifPresent(booking -> dto.setActiveBooking(toActiveBookingSummary(booking)));
         }
 

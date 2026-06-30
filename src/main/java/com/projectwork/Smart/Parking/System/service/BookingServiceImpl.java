@@ -30,6 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -113,12 +114,15 @@ public class BookingServiceImpl implements BookingService {
 
                 Booking booking = new Booking();
                 booking.setDriver(driver);
+                booking.setCustomerName(driver.getName());
+                booking.setCustomerPhone(driver.getPhone());
                 booking.setParkingLocation(location);
                 booking.setSlot(slot);
                 booking.setVehicleType(vehicleType);
+                booking.setVehicleNumber(request.getVehicleNumber().trim());
                 booking.setStartTime(request.getStartTime());
                 booking.setEndTime(request.getEndTime());
-                booking.setStatus(BookingStatus.CONFIRMED);
+                booking.setStatus(BookingStatus.PENDING);
                 booking.setTotalAmount(
                                 calculateAmount(location, vehicleType, request.getStartTime(), request.getEndTime()));
 
@@ -263,6 +267,46 @@ public class BookingServiceImpl implements BookingService {
         }
 
         @Override
+        @Transactional(readOnly = true)
+        public List<BookingResponseDto> getVendorBookings(String currentUserEmail, java.util.UUID locationId) {
+                User vendor = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Vendor not found."));
+
+                if (vendor.getRole() != UserRole.VENDOR) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "Only vendors can view vendor bookings.");
+                }
+
+                if (locationId != null) {
+                        ParkingLocation location = parkingLocationRepository.findByIdAndDeletedAtIsNull(locationId)
+                                        .orElseThrow(() -> new ResponseStatusException(
+                                                        HttpStatus.NOT_FOUND,
+                                                        "Parking location not found."));
+
+                        if (location.getVendor() == null || !location.getVendor().getId().equals(vendor.getId())) {
+                                throw new ResponseStatusException(
+                                                HttpStatus.FORBIDDEN,
+                                                "You do not have permission to view bookings for this parking location.");
+                        }
+
+                        return bookingRepository.findByParkingLocation_IdAndDeletedAtIsNull(locationId)
+                                        .stream()
+                                        .sorted(Comparator.comparing(Booking::getStartTime).reversed())
+                                        .map(this::mapToResponse)
+                                        .toList();
+                }
+
+                return bookingRepository.findByParkingLocation_Vendor_IdAndDeletedAtIsNull(vendor.getId())
+                                .stream()
+                                .sorted(Comparator.comparing(Booking::getStartTime).reversed())
+                                .map(this::mapToResponse)
+                                .toList();
+        }
+
+        @Override
         @Transactional
         public BookingCancelResponseDto cancelBooking(java.util.UUID bookingId, String email) {
                 User driver = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(email))
@@ -399,6 +443,7 @@ public class BookingServiceImpl implements BookingService {
 
                 dto.setSlotId(booking.getSlot().getId());
                 dto.setSlotNumber(booking.getSlot().getSlotNumber());
+                dto.setSlotStatus(booking.getSlot().getStatus());
 
                 if (booking.getVehicleType() != null) {
                         dto.setVehicleType(booking.getVehicleType());
@@ -459,10 +504,10 @@ public class BookingServiceImpl implements BookingService {
                                         "Booking has no assigned slot.");
                 }
 
-                if (slot.getStatus() != ParkingSlotStatus.RESERVED) {
+                if (slot.getStatus() != ParkingSlotStatus.BOOKED) {
                         throw new ResponseStatusException(
                                         HttpStatus.CONFLICT,
-                                        "Only reserved slots can be checked in.");
+                                        "Only booked slots can be checked in.");
                 }
 
                 slot.markOccupied();
@@ -490,6 +535,13 @@ public class BookingServiceImpl implements BookingService {
                                         "Only occupied slots can be completed.");
                 }
 
+                LocalDateTime completedAt = LocalDateTime.now();
+                booking.setEndTime(completedAt);
+                booking.setTotalAmount(calculateAmount(
+                                booking.getParkingLocation(),
+                                slot.getVehicleType(),
+                                booking.getStartTime(),
+                                completedAt));
                 booking.markCompleted();
                 slot.markAvailable();
                 parkingSlotRepository.save(slot);

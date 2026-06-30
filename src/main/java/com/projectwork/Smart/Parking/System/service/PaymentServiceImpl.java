@@ -3,9 +3,12 @@ package com.projectwork.Smart.Parking.System.service;
 import com.projectwork.Smart.Parking.System.dto.request.PaymentRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.PaymentResponseDto;
 import com.projectwork.Smart.Parking.System.entity.Booking;
+import com.projectwork.Smart.Parking.System.entity.BookingStatus;
 import com.projectwork.Smart.Parking.System.entity.Payment;
 import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
 import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
+import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
+import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -167,6 +170,17 @@ public class PaymentServiceImpl implements PaymentService {
         if ("Completed".equalsIgnoreCase(khaltiStatus)
                 || "SUCCESS".equalsIgnoreCase(khaltiStatus)) {
             payment.markSuccess();
+            Booking booking = payment.getBooking();
+            if (booking != null) {
+                booking.setStatus(BookingStatus.CONFIRMED);
+                ParkingSlot slot = booking.getSlot();
+                if (!booking.isWalkIn()
+                        && slot != null
+                        && slot.getStatus() == ParkingSlotStatus.RESERVED) {
+                    slot.markBooked();
+                }
+                bookingRepository.save(booking);
+            }
         } else if ("Refunded".equalsIgnoreCase(khaltiStatus)) {
             payment.markRefundCompleted();
         } else if ("Failed".equalsIgnoreCase(khaltiStatus)

@@ -23,6 +23,9 @@ public class BookingRequestDto {
     @Pattern(regexp = "^(?i)(TWO_WHEELER|FOUR_WHEELER)$", message = "Vehicle type must be one of: TWO_WHEELER, FOUR_WHEELER.")
     private String vehicleType;
 
+    @NotBlank(message = "Vehicle number is required.")
+    private String vehicleNumber;
+
     @NotNull(message = "Start time is required.")
     @Future(message = "Start time must be in the future.")
     private LocalDateTime startTime;

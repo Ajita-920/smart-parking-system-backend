@@ -52,6 +52,7 @@ public final class ApiConstant {
     // GET /api/vendors/dashboard → vendor dashboard (VENDOR)
     public static final String VENDOR_BASE = API_BASE + "/vendors";
     public static final String VENDOR_DASHBOARD = "/dashboard";
+    public static final String VENDOR_BOOKINGS = "/bookings";
     public static final String VENDOR_BOOKING_STATUS = "/bookings/{bookingId}/status";
     public static final String VENDOR_WALK_IN_BOOKING = "/bookings/walk-in";
 

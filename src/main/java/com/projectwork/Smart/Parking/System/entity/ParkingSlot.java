@@ -83,6 +83,10 @@ public class ParkingSlot extends BaseEntity {
         this.status = ParkingSlotStatus.RESERVED;
     }
 
+    public void markBooked() {
+        this.status = ParkingSlotStatus.BOOKED;
+    }
+
     public void markMaintenance() {
         this.status = ParkingSlotStatus.MAINTENANCE;
     }
