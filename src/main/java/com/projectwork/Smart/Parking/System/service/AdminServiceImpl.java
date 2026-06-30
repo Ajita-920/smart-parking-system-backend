@@ -83,14 +83,20 @@ public class AdminServiceImpl implements AdminService {
     public UserResponseDto banUser(UUID id) {
         User user = resolveActiveUser(id);
 
-        if (user.getRole() == UserRole.ADMIN) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Admin users cannot be banned."
-            );
-        }
+        rejectAdminModeration(user, "banned");
 
         user.setBanned(true);
+        return toUserResponse(userRepository.save(user));
+    }
+
+    @Override
+    @Transactional
+    public UserResponseDto unbanUser(UUID id) {
+        User user = resolveActiveUser(id);
+
+        rejectAdminModeration(user, "unbanned");
+
+        user.setBanned(false);
         return toUserResponse(userRepository.save(user));
     }
 
@@ -166,6 +172,18 @@ public class AdminServiceImpl implements AdminService {
                         HttpStatus.NOT_FOUND,
                         "User not found."
                 ));
+    }
+
+    /**
+     * Prevents admin accounts from being moderated through user ban endpoints.
+     */
+    private void rejectAdminModeration(User user, String action) {
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Admin users cannot be " + action + "."
+            );
+        }
     }
 
     /**
