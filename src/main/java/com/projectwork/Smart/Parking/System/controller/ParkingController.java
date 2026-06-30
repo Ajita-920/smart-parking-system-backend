@@ -3,6 +3,7 @@ package com.projectwork.Smart.Parking.System.controller;
 import com.projectwork.Smart.Parking.System.config.ApiConstant;
 import com.projectwork.Smart.Parking.System.dto.ApiResponse;
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.SlotStatusUpdateRequestDto;
 import com.projectwork.Smart.Parking.System.dto.request.UpdateSlotsRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingSlotResponseDto;
@@ -198,6 +199,21 @@ public class ParkingController extends BaseController {
         }
 
         return okResponse("Parking slots fetched successfully!", slots);
+    }
+
+    /**
+     * Updates a vendor-owned slot's maintenance availability status.
+     */
+    @PatchMapping(ApiConstant.PARKING_SLOT_STATUS)
+    @PreAuthorize("hasRole('VENDOR')")
+    public ResponseEntity<ApiResponse<ParkingSlotResponseDto>> updateSlotStatus(
+            @PathVariable UUID parkingLocationId,
+            @PathVariable UUID slotId,
+            @Valid @RequestBody SlotStatusUpdateRequestDto request,
+            Authentication authentication) {
+        return okResponse(
+                "Parking slot status updated successfully!",
+                parkingService.updateSlotStatus(parkingLocationId, slotId, request, authentication.getName()));
     }
 
     /**
