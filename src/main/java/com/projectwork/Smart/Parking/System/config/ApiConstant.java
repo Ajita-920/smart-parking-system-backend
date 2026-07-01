@@ -69,6 +69,9 @@ public final class ApiConstant {
     public static final String ADMIN_USER_BY_ID = "/users/{id}";
     public static final String ADMIN_VENDOR_APPROVE = "/vendors/{id}/approve";
     public static final String ADMIN_VENDOR_BY_ID = "/vendors/{id}";
+    public static final String ADMIN_PAYMENTS = "/payments";
+    public static final String ADMIN_PAYMENT_SUMMARY = "/payments/summary";
+    public static final String ADMIN_PAYMENT_BY_ID = "/payments/{paymentId}";
 
     // ─── Payments ─────────────────────────────────────────────────────────────
     // POST /api/payments/khalti/initiate → start Khalti payment
