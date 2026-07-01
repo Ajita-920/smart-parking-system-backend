@@ -480,7 +480,15 @@ public class BookingServiceImpl implements BookingService {
                 dto.setTotalAmount(booking.getTotalAmount());
                 dto.setPaymentStatus(PaymentStatus.PENDING);
 
-                paymentRepository.findFirstByBooking_IdAndDeletedAtIsNullOrderByCreatedAtDesc(booking.getId())
+                Optional<Payment> paymentForDisplay = paymentRepository
+                                .findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(
+                                                booking.getId(),
+                                                PaymentStatus.SUCCESS)
+                                .or(() -> paymentRepository
+                                                .findFirstByBooking_IdAndDeletedAtIsNullOrderByCreatedAtDesc(
+                                                                booking.getId()));
+
+                paymentForDisplay
                                 .ifPresent(payment -> {
                                         dto.setPaymentId(payment.getId());
                                         dto.setPaymentStatus(payment.getStatus());

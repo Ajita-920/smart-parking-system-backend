@@ -22,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -64,14 +65,12 @@ public class PaymentServiceImpl implements PaymentService {
 
         PaymentMethod paymentMethod = parsePaymentMethod(request.getPaymentMethod());
 
-        System.out.println("Parsing payment method (P1): " + paymentMethod);
         if (paymentMethod != PaymentMethod.KHALTI) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "This endpoint only supports KHALTI payment.");
         }
 
-        System.out.println("Fetching booking for ID (B1): " + request.getBookingId());
         Booking booking = bookingRepository.findByIdAndDeletedAtIsNull(request.getBookingId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
@@ -85,7 +84,32 @@ public class PaymentServiceImpl implements PaymentService {
                     "Invalid booking amount.");
         }
 
-        System.out.println("Creating payment record for booking (P2): " + booking.getId() + " with amount: " + amount);
+        Optional<Payment> successfulPayment = paymentRepository
+                .findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(
+                        booking.getId(),
+                        PaymentStatus.SUCCESS);
+
+        if (successfulPayment.isPresent()) {
+            PaymentResponseDto response = mapToResponse(successfulPayment.get());
+            response.setMessage("Payment already completed.");
+            return response;
+        }
+
+        Optional<Payment> latestPayment = paymentRepository
+                .findFirstByBooking_IdAndDeletedAtIsNullOrderByCreatedAtDesc(booking.getId());
+
+        if (latestPayment.isPresent()) {
+            Payment existingPayment = latestPayment.get();
+            if (existingPayment.getPaymentMethod() == PaymentMethod.KHALTI
+                    && existingPayment.getStatus() == PaymentStatus.PENDING
+                    && existingPayment.getPaymentUrl() != null
+                    && existingPayment.getPidx() != null) {
+                PaymentResponseDto response = mapToResponse(existingPayment);
+                response.setMessage("Redirect the user to paymentUrl to complete payment.");
+                return response;
+            }
+        }
+
         Payment payment = new Payment();
         payment.setBooking(booking);
         payment.setAmount(amount);
@@ -124,16 +148,12 @@ public class PaymentServiceImpl implements PaymentService {
         String paymentUrl = (String) khaltiResponse.get("payment_url");
         String pidx = (String) khaltiResponse.get("pidx");
 
-        System.out.println("Retrieved payment URL (P3): " + paymentUrl);
-        System.out.println("Retrieved pidx (P4): " + pidx);
-
         savedPayment.setPaymentUrl(paymentUrl);
         savedPayment.setPidx(pidx);
 
         Payment updatedPayment = paymentRepository.save(savedPayment);
 
         PaymentResponseDto response = mapToResponse(updatedPayment);
-        System.out.println("Returning payment response (R2): " + response);
         response.setPidx(pidx);
         response.setMessage("Redirect the user to paymentUrl to complete payment.");
 
