@@ -23,6 +23,7 @@ import com.projectwork.Smart.Parking.System.repository.ParkingSlotRepository;
 import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +46,7 @@ import java.util.Optional;
 public class BookingServiceImpl implements BookingService {
 
         private static final BigDecimal DEFAULT_HOURLY_RATE = new BigDecimal("100.00");
+        private static final ZoneId DEFAULT_BUSINESS_ZONE = ZoneId.of("Asia/Kathmandu");
 
         private final BookingRepository bookingRepository;
         private final ParkingLocationRepository parkingLocationRepository;
@@ -51,6 +54,9 @@ public class BookingServiceImpl implements BookingService {
         private final UserRepository userRepository;
         private final PaymentRepository paymentRepository;
         private final EmailService emailService;
+
+        @Value("${app.time-zone:Asia/Kathmandu}")
+        private String appTimeZone;
 
         public BookingServiceImpl(
                         BookingRepository bookingRepository,
@@ -565,7 +571,7 @@ public class BookingServiceImpl implements BookingService {
                                         "Only occupied slots can be completed.");
                 }
 
-                LocalDateTime completedAt = LocalDateTime.now();
+                LocalDateTime completedAt = currentLocalDateTime();
                 booking.setEndTime(completedAt);
                 booking.setTotalAmount(calculateAmount(
                                 booking.getParkingLocation(),
@@ -608,7 +614,15 @@ public class BookingServiceImpl implements BookingService {
 
         private boolean isRefundEligible(Booking booking) {
                 return booking.getStartTime() != null
-                                && booking.getStartTime().isAfter(LocalDateTime.now().plusHours(1));
+                                && booking.getStartTime().isAfter(currentLocalDateTime().plusHours(1));
+        }
+
+        private LocalDateTime currentLocalDateTime() {
+                ZoneId zoneId = appTimeZone == null || appTimeZone.isBlank()
+                                ? DEFAULT_BUSINESS_ZONE
+                                : ZoneId.of(appTimeZone);
+
+                return LocalDateTime.now(zoneId);
         }
 
         private BigDecimal calculateAmount(

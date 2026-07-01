@@ -47,6 +47,8 @@ khalti:
     key: ${KHALTI_SECRET_KEY}
 
 app:
+  time-zone: ${APP_TIME_ZONE:Asia/Kathmandu}
+
   website:
     url: ${APP_WEBSITE_URL}
 
