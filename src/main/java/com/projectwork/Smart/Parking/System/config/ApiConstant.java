@@ -79,6 +79,8 @@ public final class ApiConstant {
     public static final String PAYMENT_BASE = API_BASE + "/payments";
     public static final String PAYMENT_KHALTI_INITIATE = "/khalti/initiate";
     public static final String PAYMENT_KHALTI_VERIFY = "/khalti/verify";
+    public static final String PAYMENT_ME = "/me";
+    public static final String PAYMENT_ME_BY_ID = "/me/{paymentId}";
 
     // ─── Health ───────────────────────────────────────────────────────────────
     public static final String HEALTH_BASE = API_BASE + "/health";
