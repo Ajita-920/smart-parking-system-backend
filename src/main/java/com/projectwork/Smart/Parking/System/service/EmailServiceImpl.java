@@ -53,7 +53,7 @@ public class EmailServiceImpl implements EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setTo(toEmail);
-            helper.setSubject("Booking Confirmed – Smart Parking System");
+            helper.setSubject("Booking Received – Smart Parking System");
             helper.setText(buildBookingConfirmationHtml(booking), true);
 
             mailSender.send(message);
@@ -140,8 +140,6 @@ public class EmailServiceImpl implements EmailService {
         String parkingLocation = booking.getParkingLocationName() != null ? booking.getParkingLocationName() : "N/A";
         String slotNumber = booking.getSlotNumber() != null ? booking.getSlotNumber() : "N/A";
         String vehicleType = booking.getVehicleType() != null ? booking.getVehicleType().name() : "N/A";
-        String paymentMethod = booking.getPaymentMethod() != null ? booking.getPaymentMethod().name() : "N/A";
-        String paymentStatus = booking.getPaymentStatus() != null ? booking.getPaymentStatus().name() : "N/A";
         String startTime = booking.getStartTime() != null ? booking.getStartTime().format(DATE_TIME_FORMATTER) : "N/A";
         String endTime = booking.getEndTime() != null ? booking.getEndTime().format(DATE_TIME_FORMATTER) : "N/A";
         String totalAmount = booking.getTotalAmount() != null ? "Rs. " + booking.getTotalAmount() : "Rs. 0.00";
@@ -152,7 +150,7 @@ public class EmailServiceImpl implements EmailService {
                 <head>
                     <meta charset=\"UTF-8\">
                     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-                    <title>Booking Confirmed</title>
+                    <title>Booking Received</title>
                 </head>
                 <body style=\"margin:0; padding:0; background-color:#f4f7fb; font-family:Arial, sans-serif; color:#1f2937;\">
                     <table role=\"presentation\" width=\"100%%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"background-color:#f4f7fb; padding:24px;\">
@@ -166,8 +164,8 @@ public class EmailServiceImpl implements EmailService {
                                     </tr>
                                     <tr>
                                         <td style=\"padding:32px;\">
-                                            <p style=\"margin:0 0 12px; font-size:18px;\">Hello <strong>%s</strong>, your booking has been confirmed!</p>
-                                            <p style=\"margin:0 0 24px; color:#4b5563;\">Your parking reservation is ready. Please find your booking details below.</p>
+                                            <p style=\"margin:0 0 12px; font-size:18px;\">Hello <strong>%s</strong>, your slot has been reserved!</p>
+                                            <p style=\"margin:0 0 24px; color:#4b5563;\">Here are your booking details:</p>
                                             <table role=\"presentation\" width=\"100%%\" cellspacing=\"0\" cellpadding=\"10\" border=\"1\" style=\"border-collapse:collapse; border-color:#d1d5db; font-size:14px;\">
                                                 <tr style=\"background-color:#f3f4f6;\">
                                                     <th align=\"left\" style=\"padding:10px; border:1px solid #d1d5db;\">Field</th>
@@ -198,18 +196,11 @@ public class EmailServiceImpl implements EmailService {
                                                     <td style=\"padding:10px; border:1px solid #d1d5db;\">%s</td>
                                                 </tr>
                                                 <tr>
-                                                    <td style=\"padding:10px; border:1px solid #d1d5db;\">Total Amount</td>
-                                                    <td style=\"padding:10px; border:1px solid #d1d5db;\">%s</td>
-                                                </tr>
-                                                <tr style=\"background-color:#f9fafb;\">
-                                                    <td style=\"padding:10px; border:1px solid #d1d5db;\">Payment Method</td>
-                                                    <td style=\"padding:10px; border:1px solid #d1d5db;\">%s</td>
-                                                </tr>
-                                                <tr>
-                                                    <td style=\"padding:10px; border:1px solid #d1d5db;\">Payment Status</td>
+                                                    <td style=\"padding:10px; border:1px solid #d1d5db;\">Amount Due</td>
                                                     <td style=\"padding:10px; border:1px solid #d1d5db;\">%s</td>
                                                 </tr>
                                             </table>
+                                            <p style=\"margin:24px 0 0; color:#4b5563; line-height:1.6;\">You can complete your payment online now, or pay directly at the parking location when you arrive.</p>
                                         </td>
                                     </tr>
                                     <tr>
@@ -231,9 +222,7 @@ public class EmailServiceImpl implements EmailService {
                 vehicleType,
                 startTime,
                 endTime,
-                totalAmount,
-                paymentMethod,
-                paymentStatus
+                totalAmount
         );
     }
 }
