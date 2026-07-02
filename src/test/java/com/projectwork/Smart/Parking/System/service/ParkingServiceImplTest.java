@@ -11,6 +11,7 @@ import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
 import com.projectwork.Smart.Parking.System.repository.ParkingSlotRepository;
+import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,9 @@ class ParkingServiceImplTest {
     private ParkingSlotRepository parkingSlotRepository;
 
     @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     private ParkingServiceImpl parkingService;
@@ -62,6 +66,7 @@ class ParkingServiceImplTest {
                 bookingRepository,
                 parkingLocationRepository,
                 parkingSlotRepository,
+                paymentRepository,
                 userRepository);
     }
 

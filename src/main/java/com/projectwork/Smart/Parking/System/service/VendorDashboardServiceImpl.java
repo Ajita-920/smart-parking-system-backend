@@ -42,6 +42,7 @@ public class VendorDashboardServiceImpl implements VendorDashboardService {
         List<ParkingLocation> locations = parkingLocationRepository.findByVendorAndDeletedAtIsNull(vendor);
 
         VendorDashboardResponseDto dashboard = new VendorDashboardResponseDto();
+        dashboard.setVendor(toVendorSummary(vendor));
         dashboard.setTotalParkingLocations(locations.size());
 
         for (ParkingLocation location : locations) {
@@ -49,6 +50,16 @@ public class VendorDashboardServiceImpl implements VendorDashboardService {
         }
 
         return dashboard;
+    }
+
+    private VendorDashboardResponseDto.VendorSummary toVendorSummary(User vendor) {
+        VendorDashboardResponseDto.VendorSummary summary =
+                new VendorDashboardResponseDto.VendorSummary();
+        summary.setId(vendor.getId());
+        summary.setName(vendor.getName());
+        summary.setEmail(vendor.getEmail());
+        summary.setApproved(vendor.isApproved());
+        return summary;
     }
 
     /**
@@ -75,6 +86,12 @@ public class VendorDashboardServiceImpl implements VendorDashboardService {
 
         summary.setId(location.getId());
         summary.setName(location.getName());
+        summary.setAddress(location.getAddress());
+        summary.setLatitude(location.getLatitude());
+        summary.setLongitude(location.getLongitude());
+        summary.setTwoWheelerRatePerHour(location.getTwoWheelerRatePerHour());
+        summary.setFourWheelerRatePerHour(location.getFourWheelerRatePerHour());
+        summary.setVendorName(location.getVendor().getName());
         summary.setTotalSlots(totalSlots);
         summary.setAvailableSlots(availableSlots);
         summary.setOccupiedSlots(occupiedSlots);

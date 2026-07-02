@@ -1,10 +1,13 @@
 package com.projectwork.Smart.Parking.System.dto.response;
 
 import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
+import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
+import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
 import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import com.projectwork.Smart.Parking.System.entity.BookingStatus;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -30,5 +33,8 @@ public class ParkingSlotResponseDto {
         private LocalDateTime startTime;
         private LocalDateTime endTime;
         private BookingStatus status;
+        private BigDecimal totalAmount;
+        private PaymentStatus paymentStatus;
+        private PaymentMethod paymentMethod;
     }
 }
