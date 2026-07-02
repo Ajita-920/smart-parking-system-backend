@@ -10,11 +10,13 @@ import com.projectwork.Smart.Parking.System.entity.BookingStatus;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
+import com.projectwork.Smart.Parking.System.entity.Payment;
 import com.projectwork.Smart.Parking.System.entity.User;
 import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
 import com.projectwork.Smart.Parking.System.repository.ParkingSlotRepository;
+import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ public class ParkingServiceImpl implements ParkingService {
     private final BookingRepository bookingRepository;
     private final ParkingLocationRepository parkingLocationRepository;
     private final ParkingSlotRepository parkingSlotRepository;
+    private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
 
     public ParkingServiceImpl(
@@ -39,12 +42,14 @@ public class ParkingServiceImpl implements ParkingService {
             BookingRepository bookingRepository,
             ParkingLocationRepository parkingLocationRepository,
             ParkingSlotRepository parkingSlotRepository,
+            PaymentRepository paymentRepository,
             UserRepository userRepository
     ) {
         this.dijkstraService = dijkstraService;
         this.bookingRepository = bookingRepository;
         this.parkingLocationRepository = parkingLocationRepository;
         this.parkingSlotRepository = parkingSlotRepository;
+        this.paymentRepository = paymentRepository;
         this.userRepository = userRepository;
     }
 
@@ -474,7 +479,20 @@ public class ParkingServiceImpl implements ParkingService {
         dto.setStartTime(booking.getStartTime());
         dto.setEndTime(booking.getEndTime());
         dto.setStatus(booking.getStatus());
+        dto.setTotalAmount(booking.getTotalAmount());
+
+        paymentRepository.findFirstByBooking_IdAndDeletedAtIsNullOrderByCreatedAtDesc(
+                booking.getId()
+        ).ifPresent(payment -> applyPaymentSummary(dto, payment));
 
         return dto;
+    }
+
+    private void applyPaymentSummary(
+            ParkingSlotResponseDto.ActiveBookingSummaryDto dto,
+            Payment payment
+    ) {
+        dto.setPaymentStatus(payment.getStatus());
+        dto.setPaymentMethod(payment.getPaymentMethod());
     }
 }
