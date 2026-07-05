@@ -9,7 +9,10 @@ import com.projectwork.Smart.Parking.System.entity.BookingStatus;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
+import com.projectwork.Smart.Parking.System.entity.Payment;
+import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
 import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
+import com.projectwork.Smart.Parking.System.entity.RefundStatus;
 import com.projectwork.Smart.Parking.System.entity.User;
 import com.projectwork.Smart.Parking.System.entity.UserRole;
 import com.projectwork.Smart.Parking.System.entity.VehicleType;
@@ -168,6 +171,40 @@ class BookingServiceImplTest {
     }
 
     @Test
+    void cancelBooking_shouldMarkRefundPendingWhenPaidBookingIsCancelledBeforeCheckIn() {
+        User driver = buildUser("driver@example.com", UserRole.DRIVER);
+        ParkingLocation location = buildLocation(2, 0);
+        location.setAvailableFourWheelerSlots(1);
+        ParkingSlot slot = buildSlot(location, VehicleType.FOUR_WHEELER, ParkingSlotStatus.BOOKED);
+        Booking booking = buildBooking(driver, location, slot, BookingStatus.CONFIRMED);
+        Payment payment = buildSuccessfulPayment(booking, new BigDecimal("225.50"));
+
+        when(userRepository.findByEmailAndDeletedAtIsNull("driver@example.com")).thenReturn(Optional.of(driver));
+        when(bookingRepository.findByIdAndDriverAndDeletedAtIsNull(booking.getId(), driver))
+                .thenReturn(Optional.of(booking));
+        when(paymentRepository.findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(
+                booking.getId(),
+                PaymentStatus.SUCCESS
+        )).thenReturn(Optional.of(payment));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BookingCancelResponseDto response = bookingService.cancelBooking(booking.getId(), "driver@example.com");
+
+        assertEquals(BookingStatus.CANCELLED.name(), response.getStatus());
+        assertEquals(RefundStatus.PENDING.name(), response.getRefundStatus());
+        assertEquals(new BigDecimal("225.50"), response.getRefundAmount());
+        assertEquals(RefundStatus.PENDING, payment.getRefundStatus());
+        assertEquals(new BigDecimal("225.50"), payment.getRefundAmount());
+        assertNotNull(payment.getRefundRequestedAt());
+        assertEquals(ParkingSlotStatus.AVAILABLE, slot.getStatus());
+        assertEquals(2, location.getAvailableFourWheelerSlots());
+        verify(paymentRepository).save(payment);
+        verify(parkingSlotRepository).save(slot);
+        verify(parkingLocationRepository).save(location);
+        verify(bookingRepository).save(booking);
+    }
+
+    @Test
     void expirePendingBookings_shouldCancelExpiredPendingBookingsAndReleaseReservedSlots() {
         User driver = buildUser("driver@example.com", UserRole.DRIVER);
         ParkingLocation location = buildLocation(2, 0);
@@ -294,6 +331,18 @@ class BookingServiceImplTest {
         booking.setStatus(status);
         booking.setTotalAmount(new BigDecimal("200.00"));
         return booking;
+    }
+
+    private Payment buildSuccessfulPayment(Booking booking, BigDecimal amount) {
+        Payment payment = new Payment();
+        ReflectionTestUtils.setField(payment, "id", UUID.randomUUID());
+        payment.setBooking(booking);
+        payment.setAmount(amount);
+        payment.setStatus(PaymentStatus.SUCCESS);
+        payment.setPaymentMethod(PaymentMethod.KHALTI);
+        payment.setTransactionId("TXN-TEST");
+        payment.setPidx("test-pidx");
+        return payment;
     }
 
     private ParkingSlot buildSlot(ParkingLocation location, VehicleType vehicleType, ParkingSlotStatus status) {

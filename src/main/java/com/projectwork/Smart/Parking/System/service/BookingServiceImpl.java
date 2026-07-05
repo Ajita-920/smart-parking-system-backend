@@ -385,40 +385,32 @@ public class BookingServiceImpl implements BookingService {
 
                 releaseSlotAndIncreaseAvailability(booking);
 
-                boolean refundEligible = isRefundEligible(booking);
-
                 BookingCancelResponseDto response = new BookingCancelResponseDto();
                 response.setBookingId(booking.getId());
                 response.setStatus(BookingStatus.CANCELLED.name());
                 response.setRefunded(false);
 
-                if (refundEligible) {
-                        BigDecimal refundAmount = booking.getTotalAmount() != null
-                                        ? booking.getTotalAmount()
+                Optional<Payment> successfulPayment = paymentRepository
+                                .findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(
+                                                booking.getId(),
+                                                PaymentStatus.SUCCESS);
+
+                if (successfulPayment.isPresent()) {
+                        Payment payment = successfulPayment.get();
+                        BigDecimal refundAmount = payment.getAmount() != null
+                                        ? payment.getAmount()
                                         : BigDecimal.ZERO;
 
-                        Optional<Payment> successfulPayment = paymentRepository
-                                        .findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(
-                                                        booking.getId(),
-                                                        PaymentStatus.SUCCESS);
+                        payment.markRefundPending(refundAmount);
+                        paymentRepository.save(payment);
 
-                        if (successfulPayment.isPresent()) {
-                                Payment payment = successfulPayment.get();
-                                payment.markRefundPending(refundAmount);
-                                paymentRepository.save(payment);
-
-                                response.setRefundStatus(RefundStatus.PENDING.name());
-                                response.setRefundAmount(refundAmount);
-                                response.setMessage("Booking cancelled. Refund is pending.");
-                        } else {
-                                response.setRefundStatus(RefundStatus.NONE.name());
-                                response.setRefundAmount(BigDecimal.ZERO);
-                                response.setMessage("Booking cancelled. No successful payment found for refund.");
-                        }
+                        response.setRefundStatus(RefundStatus.PENDING.name());
+                        response.setRefundAmount(refundAmount);
+                        response.setMessage("Booking cancelled. Refund is pending.");
                 } else {
                         response.setRefundStatus(RefundStatus.NONE.name());
                         response.setRefundAmount(BigDecimal.ZERO);
-                        response.setMessage("Booking cancelled. Refund is not eligible.");
+                        response.setMessage("Booking cancelled. No successful payment found for refund.");
                 }
 
                 bookingRepository.save(booking);
@@ -636,11 +628,6 @@ public class BookingServiceImpl implements BookingService {
                 } catch (Exception e) {
                         log.error("Booking confirmation email dispatch failed for booking {}", booking.getId(), e);
                 }
-        }
-
-        private boolean isRefundEligible(Booking booking) {
-                return booking.getStartTime() != null
-                                && booking.getStartTime().isAfter(currentLocalDateTime().plusHours(1));
         }
 
         private LocalDateTime currentLocalDateTime() {
