@@ -11,6 +11,8 @@ import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
 import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
 import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
+import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
+import com.projectwork.Smart.Parking.System.repository.ParkingSlotRepository;
 import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,7 +44,16 @@ class PaymentServiceImplTest {
     private BookingRepository bookingRepository;
 
     @Mock
+    private ParkingLocationRepository parkingLocationRepository;
+
+    @Mock
+    private ParkingSlotRepository parkingSlotRepository;
+
+    @Mock
     private PaymentRepository paymentRepository;
+
+    @Mock
+    private EmailService emailService;
 
     @Mock
     private RestClient restClient;
@@ -60,7 +71,12 @@ class PaymentServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        paymentService = new PaymentServiceImpl(bookingRepository, paymentRepository);
+        paymentService = new PaymentServiceImpl(
+                bookingRepository,
+                parkingLocationRepository,
+                parkingSlotRepository,
+                paymentRepository,
+                emailService);
         ReflectionTestUtils.setField(paymentService, "restClient", restClient);
         ReflectionTestUtils.setField(paymentService, "khaltiVerifyUrl", "https://khalti.test/verify");
         ReflectionTestUtils.setField(paymentService, "khaltiSecretKey", "test-secret-key");
@@ -71,7 +87,7 @@ class PaymentServiceImplTest {
         Booking booking = buildPendingBookingWithReservedSlot();
         Payment payment = buildPendingPayment(booking, "test-pidx");
 
-        mockKhaltiVerifyResponse("Completed");
+        mockKhaltiVerifyResponse("Completed", 2250);
         when(paymentRepository.findByPidxAndDeletedAtIsNull("test-pidx")).thenReturn(Optional.of(payment));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -79,11 +95,14 @@ class PaymentServiceImplTest {
         PaymentResponseDto response = paymentService.verifyKhaltiPayment("test-pidx");
 
         assertEquals(PaymentStatus.SUCCESS, payment.getStatus());
+        assertEquals(new BigDecimal("22.50"), payment.getAmount());
         assertNotNull(payment.getPaidAt());
         assertEquals(BookingStatus.CONFIRMED, booking.getStatus());
         assertEquals(ParkingSlotStatus.BOOKED, booking.getSlot().getStatus());
+        assertEquals(new BigDecimal("22.50"), response.getAmount());
         assertEquals(PaymentStatus.SUCCESS, response.getStatus());
         assertEquals("test-pidx", response.getPidx());
+        verify(parkingSlotRepository).save(booking.getSlot());
         verify(bookingRepository).save(booking);
         verify(paymentRepository).save(payment);
     }
@@ -93,27 +112,37 @@ class PaymentServiceImplTest {
         Booking booking = buildPendingBookingWithReservedSlot();
         Payment payment = buildPendingPayment(booking, "failed-pidx");
 
-        mockKhaltiVerifyResponse("Failed");
+        mockKhaltiVerifyResponse("Failed", null);
         when(paymentRepository.findByPidxAndDeletedAtIsNull("failed-pidx")).thenReturn(Optional.of(payment));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PaymentResponseDto response = paymentService.verifyKhaltiPayment("failed-pidx");
 
         assertEquals(PaymentStatus.FAILED, payment.getStatus());
-        assertEquals(BookingStatus.PENDING, booking.getStatus());
-        assertEquals(ParkingSlotStatus.RESERVED, booking.getSlot().getStatus());
+        assertEquals(BookingStatus.CANCELLED, booking.getStatus());
+        assertEquals(ParkingSlotStatus.AVAILABLE, booking.getSlot().getStatus());
+        assertEquals(2, booking.getParkingLocation().getAvailableFourWheelerSlots());
         assertEquals(PaymentStatus.FAILED, response.getStatus());
+        verify(parkingSlotRepository).save(booking.getSlot());
+        verify(parkingLocationRepository).save(booking.getParkingLocation());
+        verify(bookingRepository).save(booking);
         verify(paymentRepository).save(payment);
     }
 
-    private void mockKhaltiVerifyResponse(String status) {
+    private void mockKhaltiVerifyResponse(String status, Integer totalAmountInPaisa) {
+        Map<String, Object> khaltiResponse = new java.util.HashMap<>();
+        khaltiResponse.put("status", status);
+        if (totalAmountInPaisa != null) {
+            khaltiResponse.put("total_amount", totalAmountInPaisa);
+        }
+
         when(restClient.post()).thenReturn(requestBodyUriSpec);
         when(requestBodyUriSpec.uri("https://khalti.test/verify")).thenReturn(requestBodySpec);
         when(requestBodySpec.header("Authorization", "test-secret-key")).thenReturn(requestBodySpec);
         when(requestBodySpec.contentType(MediaType.APPLICATION_JSON)).thenReturn(requestBodySpec);
         when(requestBodySpec.body(any(Map.class))).thenReturn(requestBodySpec);
         when(requestBodySpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(eq(Map.class))).thenReturn(Map.of("status", status));
+        when(responseSpec.body(eq(Map.class))).thenReturn(khaltiResponse);
     }
 
     private Payment buildPendingPayment(Booking booking, String pidx) {

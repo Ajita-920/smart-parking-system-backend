@@ -133,6 +133,7 @@ class BookingServiceImplTest {
         assertEquals(new BigDecimal("200.0"), response.getTotalAmount());
         assertEquals(ParkingSlotStatus.RESERVED, slot.getStatus());
         assertEquals(1, location.getAvailableFourWheelerSlots());
+        verify(emailService, never()).sendBookingConfirmation(any(BookingResponseDto.class), anyString());
     }
 
     @Test

@@ -153,17 +153,6 @@ public class BookingServiceImpl implements BookingService {
                 BookingResponseDto response = mapToResponse(savedBooking);
                 response.setMessage("Booking created successfully.");
 
-                String driverEmail = driver.getEmail();
-                log.info("Booking {} reached CONFIRMED state; attempting confirmation email for driver email '{}'",
-                                savedBooking.getId(), driverEmail);
-
-                try {
-                        emailService.sendBookingConfirmation(response, driverEmail);
-                        log.info("Triggered confirmation email for booking {}", savedBooking.getId());
-                } catch (Exception e) {
-                        log.error("Could not trigger confirmation email for booking {}", savedBooking.getId(), e);
-                }
-
                 return response;
         }
 
