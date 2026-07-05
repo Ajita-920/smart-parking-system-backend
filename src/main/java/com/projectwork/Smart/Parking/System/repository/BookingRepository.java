@@ -63,6 +63,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
                         ParkingLocation parkingLocation,
                         List<BookingStatus> statuses);
 
+        boolean existsByDriverAndStatusInAndDeletedAtIsNull(
+                        User driver,
+                        List<BookingStatus> statuses);
+
         @Query("""
                         SELECT b FROM Booking b
                         WHERE b.status = :status

@@ -49,6 +49,9 @@ public class BookingServiceImpl implements BookingService {
 
         private static final BigDecimal DEFAULT_HOURLY_RATE = new BigDecimal("100.00");
         private static final ZoneId DEFAULT_BUSINESS_ZONE = ZoneId.of("Asia/Kathmandu");
+        private static final List<BookingStatus> ACTIVE_DRIVER_BOOKING_STATUSES = List.of(
+                        BookingStatus.PENDING,
+                        BookingStatus.CONFIRMED);
 
         private final BookingRepository bookingRepository;
         private final ParkingLocationRepository parkingLocationRepository;
@@ -90,6 +93,14 @@ public class BookingServiceImpl implements BookingService {
                         throw new ResponseStatusException(
                                         HttpStatus.FORBIDDEN,
                                         "Only drivers can create bookings.");
+                }
+
+                if (bookingRepository.existsByDriverAndStatusInAndDeletedAtIsNull(
+                                driver,
+                                ACTIVE_DRIVER_BOOKING_STATUSES)) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "You already have an active booking. Cancel or complete it before creating another booking.");
                 }
 
                 ParkingLocation location = parkingLocationRepository

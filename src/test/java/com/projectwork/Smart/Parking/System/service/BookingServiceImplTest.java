@@ -108,6 +108,30 @@ class BookingServiceImplTest {
     }
 
     @Test
+    void createBooking_shouldRejectWhenDriverAlreadyHasActiveBooking() {
+        User driver = buildUser("driver@example.com", UserRole.DRIVER);
+        UUID locationId = UUID.randomUUID();
+        UUID slotId = UUID.randomUUID();
+        BookingRequestDto request = buildBookingRequest(locationId, slotId,
+                VehicleType.FOUR_WHEELER, START_TIME, START_TIME.plusMinutes(90));
+
+        when(userRepository.findByEmailAndDeletedAtIsNull("driver@example.com")).thenReturn(Optional.of(driver));
+        when(bookingRepository.existsByDriverAndStatusInAndDeletedAtIsNull(
+                eq(driver),
+                eq(List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)))).thenReturn(true);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> bookingService.createBooking(request, "driver@example.com"));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("You already have an active booking. Cancel or complete it before creating another booking.",
+                exception.getReason());
+        verify(parkingLocationRepository, never()).findByIdAndDeletedAtIsNull(any(UUID.class));
+        verify(parkingSlotRepository, never()).findByIdAndDeletedAtIsNullForUpdate(any(UUID.class));
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
     void createBooking_shouldCalculateNinetyMinutesAsTwoBillableHours() {
         User driver = buildUser("driver@example.com", UserRole.DRIVER);
         ParkingLocation location = buildLocation(2, 0);
