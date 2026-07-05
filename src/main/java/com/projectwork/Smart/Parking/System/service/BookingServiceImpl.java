@@ -279,7 +279,8 @@ public class BookingServiceImpl implements BookingService {
                                                 "User not found."));
 
                 boolean isAdmin = currentUser.getRole() == UserRole.ADMIN;
-                boolean isBookingDriver = booking.getDriver().getId().equals(currentUser.getId());
+                boolean isBookingDriver = booking.getDriver() != null
+                                && booking.getDriver().getId().equals(currentUser.getId());
                 boolean isLocationVendor = currentUser.getRole() == UserRole.VENDOR
                                 && booking.getParkingLocation().getVendor().getId().equals(currentUser.getId());
 
@@ -468,6 +469,10 @@ public class BookingServiceImpl implements BookingService {
 
                 dto.setParkingLocationId(booking.getParkingLocation().getId());
                 dto.setParkingLocationName(booking.getParkingLocation().getName());
+                if (booking.getParkingLocation().getVendor() != null) {
+                        dto.setVendorId(booking.getParkingLocation().getVendor().getId());
+                        dto.setVendorName(booking.getParkingLocation().getVendor().getName());
+                }
 
                 dto.setSlotId(booking.getSlot().getId());
                 dto.setSlotNumber(booking.getSlot().getSlotNumber());
@@ -482,9 +487,9 @@ public class BookingServiceImpl implements BookingService {
                 dto.setStatus(booking.getStatus());
                 dto.setStartTime(booking.getStartTime());
                 dto.setEndTime(booking.getEndTime());
+                dto.setCreatedAt(booking.getCreatedAt());
                 dto.setCancelledAt(booking.getCancelledAt());
                 dto.setTotalAmount(booking.getTotalAmount());
-                dto.setPaymentStatus(PaymentStatus.PENDING);
 
                 Optional<Payment> paymentForDisplay = paymentRepository
                                 .findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(

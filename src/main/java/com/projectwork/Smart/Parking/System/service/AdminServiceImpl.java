@@ -4,10 +4,13 @@ import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.UserResponseDto;
 import com.projectwork.Smart.Parking.System.entity.Booking;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
+import com.projectwork.Smart.Parking.System.entity.Payment;
+import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
 import com.projectwork.Smart.Parking.System.entity.User;
 import com.projectwork.Smart.Parking.System.entity.UserRole;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
+import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -30,17 +33,20 @@ public class AdminServiceImpl implements AdminService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final ParkingLocationRepository parkingLocationRepository;
+    private final PaymentRepository paymentRepository;
     private final EmailService emailService;
 
     public AdminServiceImpl(
             BookingRepository bookingRepository,
             UserRepository userRepository,
             ParkingLocationRepository parkingLocationRepository,
+            PaymentRepository paymentRepository,
             EmailService emailService
     ) {
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.parkingLocationRepository = parkingLocationRepository;
+        this.paymentRepository = paymentRepository;
         this.emailService = emailService;
     }
 
@@ -228,6 +234,7 @@ public class AdminServiceImpl implements AdminService {
         dto.setRole(user.getRole());
         dto.setBanned(user.isBanned());
         dto.setApproved(user.isApproved());
+        dto.setCreatedAt(user.getCreatedAt() != null ? user.getCreatedAt() : user.getUpdatedAt());
 
         return dto;
     }
@@ -254,6 +261,10 @@ public class AdminServiceImpl implements AdminService {
         if (booking.getParkingLocation() != null) {
             dto.setParkingLocationId(booking.getParkingLocation().getId());
             dto.setParkingLocationName(booking.getParkingLocation().getName());
+            if (booking.getParkingLocation().getVendor() != null) {
+                dto.setVendorId(booking.getParkingLocation().getVendor().getId());
+                dto.setVendorName(booking.getParkingLocation().getVendor().getName());
+            }
         }
 
         if (booking.getSlot() != null) {
@@ -266,9 +277,24 @@ public class AdminServiceImpl implements AdminService {
         dto.setStatus(booking.getStatus());
         dto.setStartTime(booking.getStartTime());
         dto.setEndTime(booking.getEndTime());
+        dto.setCreatedAt(booking.getCreatedAt());
         dto.setCancelledAt(booking.getCancelledAt());
         dto.setTotalAmount(booking.getTotalAmount());
 
+        paymentRepository.findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(
+                        booking.getId(),
+                        PaymentStatus.SUCCESS)
+                .or(() -> paymentRepository.findFirstByBooking_IdAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        booking.getId()))
+                .ifPresent(payment -> applyPayment(dto, payment));
+
         return dto;
+    }
+
+    private void applyPayment(BookingResponseDto dto, Payment payment) {
+        dto.setPaymentId(payment.getId());
+        dto.setPaymentStatus(payment.getStatus());
+        dto.setPaymentMethod(payment.getPaymentMethod());
+        dto.setPaidAt(payment.getPaidAt());
     }
 }

@@ -27,6 +27,8 @@ public class BookingResponseDto {
 
     private UUID parkingLocationId;
     private String parkingLocationName;
+    private UUID vendorId;
+    private String vendorName;
 
     private UUID slotId;
     private String slotNumber;
@@ -39,6 +41,7 @@ public class BookingResponseDto {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 
+    private Instant createdAt;
     private Instant cancelledAt;
 
     private BigDecimal totalAmount;

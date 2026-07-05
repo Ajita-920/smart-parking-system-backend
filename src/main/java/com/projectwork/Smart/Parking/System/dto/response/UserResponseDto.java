@@ -4,6 +4,7 @@ import com.projectwork.Smart.Parking.System.entity.UserRole;
 import lombok.Data;
 
 import java.util.UUID;
+import java.time.Instant;
 
 @Data
 public class UserResponseDto {
@@ -15,4 +16,5 @@ public class UserResponseDto {
     private UserRole role;
     private boolean banned;
     private boolean approved;
+    private Instant createdAt;
 }
