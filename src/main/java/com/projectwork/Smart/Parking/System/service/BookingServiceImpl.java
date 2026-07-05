@@ -360,6 +360,18 @@ public class BookingServiceImpl implements BookingService {
                                         "Completed booking cannot be cancelled.");
                 }
 
+                if (booking.isWalkIn()) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Walk-in bookings cannot be cancelled from this endpoint.");
+                }
+
+                if (booking.getSlot() != null && booking.getSlot().getStatus() == ParkingSlotStatus.OCCUPIED) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Checked-in booking cannot be cancelled.");
+                }
+
                 booking.markCancelled();
 
                 releaseSlotAndIncreaseAvailability(booking);
@@ -658,11 +670,7 @@ public class BookingServiceImpl implements BookingService {
                 payment.setPaymentMethod(paymentMethod);
                 payment.setTransactionId(generateTransactionId());
 
-                if (paymentMethod == PaymentMethod.CASH) {
-                        payment.markSuccess();
-                } else {
-                        payment.setStatus(PaymentStatus.PENDING);
-                }
+                payment.markSuccess();
 
                 paymentRepository.save(payment);
         }
