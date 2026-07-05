@@ -12,6 +12,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
@@ -46,6 +48,24 @@ public abstract class BaseEntity {
 
     public Instant getDeletedAt() {
         return deletedAt;
+    }
+
+    @PrePersist
+    private void setCreationTimestamps() {
+        Instant now = Instant.now();
+
+        if (createdAt == null) {
+            createdAt = now;
+        }
+
+        if (updatedAt == null) {
+            updatedAt = createdAt;
+        }
+    }
+
+    @PreUpdate
+    private void setUpdateTimestamp() {
+        updatedAt = Instant.now();
     }
 
     public void softDelete() {

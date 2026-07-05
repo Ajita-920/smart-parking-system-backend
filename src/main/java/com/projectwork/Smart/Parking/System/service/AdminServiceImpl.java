@@ -234,7 +234,8 @@ public class AdminServiceImpl implements AdminService {
         dto.setRole(user.getRole());
         dto.setBanned(user.isBanned());
         dto.setApproved(user.isApproved());
-        dto.setCreatedAt(user.getCreatedAt() != null ? user.getCreatedAt() : user.getUpdatedAt());
+        dto.setJoinedAt(user.getCreatedAt() != null ? user.getCreatedAt() : user.getUpdatedAt());
+        dto.setCreatedAt(dto.getJoinedAt());
 
         return dto;
     }

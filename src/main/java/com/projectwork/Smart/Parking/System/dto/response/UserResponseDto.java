@@ -16,5 +16,6 @@ public class UserResponseDto {
     private UserRole role;
     private boolean banned;
     private boolean approved;
+    private Instant joinedAt;
     private Instant createdAt;
 }
