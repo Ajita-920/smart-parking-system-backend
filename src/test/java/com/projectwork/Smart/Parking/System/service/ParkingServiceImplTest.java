@@ -170,6 +170,26 @@ class ParkingServiceImplTest {
         verify(parkingLocationRepository).save(parking);
     }
 
+    @Test
+    void updateParkingLocation_shouldRejectManualTotalSlotCountChanges() {
+        User vendor = buildUser("vendor@example.com", UserRole.VENDOR);
+        ParkingLocation parking = buildParkingLocation(vendor);
+        ParkingLocationRequestDto request = buildParkingRequest(3, 3);
+
+        when(parkingLocationRepository.findByIdAndDeletedAtIsNull(parking.getId()))
+                .thenReturn(Optional.of(parking));
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> parkingService.updateParkingLocation(parking.getId(), request, "vendor@example.com"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals(
+                "Total slot counts cannot be changed while editing parking location details.",
+                exception.getReason()
+        );
+        verify(parkingLocationRepository, never()).save(any(ParkingLocation.class));
+    }
+
     private ParkingLocationRequestDto buildParkingRequest(int fourWheelerSlots, int twoWheelerSlots) {
         ParkingLocationRequestDto request = new ParkingLocationRequestDto();
         request.setName(" Thamel Plaza ");

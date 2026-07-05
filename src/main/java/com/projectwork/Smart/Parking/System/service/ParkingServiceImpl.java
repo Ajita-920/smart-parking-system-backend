@@ -161,6 +161,14 @@ public class ParkingServiceImpl implements ParkingService {
     ) {
         ParkingLocation parking = resolveOwnedParking(id, currentUserEmail);
 
+        if (!request.getTotalFourWheelerSlots().equals(parking.getTotalFourWheelerSlots())
+                || !request.getTotalTwoWheelerSlots().equals(parking.getTotalTwoWheelerSlots())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Total slot counts cannot be changed while editing parking location details."
+            );
+        }
+
         parking.setName(request.getName().trim());
         parking.setAddress(request.getAddress().trim());
         parking.setLatitude(request.getLatitude());
