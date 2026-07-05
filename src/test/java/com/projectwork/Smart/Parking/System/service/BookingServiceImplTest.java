@@ -28,8 +28,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,6 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -153,6 +157,33 @@ class BookingServiceImplTest {
         BookingCancelResponseDto response = bookingService.cancelBooking(booking.getId(), "driver@example.com");
 
         assertEquals(BookingStatus.CANCELLED.name(), response.getStatus());
+        assertEquals(BookingStatus.CANCELLED, booking.getStatus());
+        assertNotNull(booking.getCancelledAt());
+        assertEquals(ParkingSlotStatus.AVAILABLE, slot.getStatus());
+        assertEquals(2, location.getAvailableFourWheelerSlots());
+        verify(parkingSlotRepository).save(slot);
+        verify(parkingLocationRepository).save(location);
+        verify(bookingRepository).save(booking);
+    }
+
+    @Test
+    void expirePendingBookings_shouldCancelExpiredPendingBookingsAndReleaseReservedSlots() {
+        User driver = buildUser("driver@example.com", UserRole.DRIVER);
+        ParkingLocation location = buildLocation(2, 0);
+        location.setAvailableFourWheelerSlots(1);
+        ParkingSlot slot = buildSlot(location, VehicleType.FOUR_WHEELER, ParkingSlotStatus.RESERVED);
+        Booking booking = buildBooking(driver, location, slot, BookingStatus.PENDING);
+        ReflectionTestUtils.setField(booking, "createdAt", Instant.now().minusSeconds(1800));
+        ReflectionTestUtils.setField(bookingService, "pendingBookingExpirationMinutes", 15L);
+
+        when(bookingRepository.findByStatusAndCreatedAtBeforeAndDeletedAtIsNull(
+                eq(BookingStatus.PENDING),
+                any(Instant.class)
+        )).thenReturn(List.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        bookingService.expirePendingBookings();
+
         assertEquals(BookingStatus.CANCELLED, booking.getStatus());
         assertNotNull(booking.getCancelledAt());
         assertEquals(ParkingSlotStatus.AVAILABLE, slot.getStatus());

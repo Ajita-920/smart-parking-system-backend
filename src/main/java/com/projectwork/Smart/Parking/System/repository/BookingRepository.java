@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -57,6 +58,20 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
         long countByParkingLocation_IdAndDeletedAtIsNull(UUID locationId);
 
         long countByParkingLocation_Vendor_IdAndDeletedAtIsNull(UUID vendorId);
+
+        boolean existsByParkingLocationAndStatusInAndDeletedAtIsNull(
+                        ParkingLocation parkingLocation,
+                        List<BookingStatus> statuses);
+
+        @Query("""
+                        SELECT b FROM Booking b
+                        WHERE b.status = :status
+                          AND b.deletedAt IS NULL
+                          AND b.createdAt < :expiresBefore
+                        """)
+        List<Booking> findByStatusAndCreatedAtBeforeAndDeletedAtIsNull(
+                        @Param("status") BookingStatus status,
+                        @Param("expiresBefore") Instant expiresBefore);
 
         @Query("""
                         SELECT b FROM Booking b

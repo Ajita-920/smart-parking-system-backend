@@ -25,11 +25,13 @@ import com.projectwork.Smart.Parking.System.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -57,6 +59,9 @@ public class BookingServiceImpl implements BookingService {
 
         @Value("${app.time-zone:Asia/Kathmandu}")
         private String appTimeZone;
+
+        @Value("${app.booking.pending-expiration-minutes:15}")
+        private long pendingBookingExpirationMinutes;
 
         public BookingServiceImpl(
                         BookingRepository bookingRepository,
@@ -160,6 +165,21 @@ public class BookingServiceImpl implements BookingService {
                 }
 
                 return response;
+        }
+
+        @Scheduled(fixedDelayString = "${app.booking.pending-cleanup-delay-ms:60000}")
+        @Transactional
+        public void expirePendingBookings() {
+                Instant expiresBefore = Instant.now().minus(Duration.ofMinutes(pendingBookingExpirationMinutes));
+                List<Booking> expiredBookings = bookingRepository.findByStatusAndCreatedAtBeforeAndDeletedAtIsNull(
+                                BookingStatus.PENDING,
+                                expiresBefore);
+
+                expiredBookings.forEach(booking -> {
+                        booking.markCancelled();
+                        releaseSlotAndIncreaseAvailability(booking);
+                        bookingRepository.save(booking);
+                });
         }
 
         @Override

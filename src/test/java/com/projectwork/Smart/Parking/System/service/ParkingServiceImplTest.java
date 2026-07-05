@@ -2,6 +2,7 @@ package com.projectwork.Smart.Parking.System.service;
 
 import com.projectwork.Smart.Parking.System.dto.request.ParkingLocationRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.ParkingLocationResponseDto;
+import com.projectwork.Smart.Parking.System.entity.BookingStatus;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
 import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
@@ -129,6 +130,46 @@ class ParkingServiceImplTest {
         verify(parkingSlotRepository, never()).saveAll(any());
     }
 
+    @Test
+    void deleteParkingLocation_shouldRejectLocationWithActiveBookings() {
+        User vendor = buildUser("vendor@example.com", UserRole.VENDOR);
+        ParkingLocation parking = buildParkingLocation(vendor);
+        UUID parkingId = parking.getId();
+
+        when(parkingLocationRepository.findByIdAndDeletedAtIsNull(parkingId))
+                .thenReturn(Optional.of(parking));
+        when(bookingRepository.existsByParkingLocationAndStatusInAndDeletedAtIsNull(
+                parking,
+                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)
+        )).thenReturn(true);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> parkingService.deleteParkingLocation(parkingId, "vendor@example.com"));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("Cannot delete parking location with active bookings.", exception.getReason());
+        verify(parkingLocationRepository, never()).save(any(ParkingLocation.class));
+    }
+
+    @Test
+    void deleteParkingLocation_shouldSoftDeleteLocationWhenNoActiveBookingsExist() {
+        User vendor = buildUser("vendor@example.com", UserRole.VENDOR);
+        ParkingLocation parking = buildParkingLocation(vendor);
+        UUID parkingId = parking.getId();
+
+        when(parkingLocationRepository.findByIdAndDeletedAtIsNull(parkingId))
+                .thenReturn(Optional.of(parking));
+        when(bookingRepository.existsByParkingLocationAndStatusInAndDeletedAtIsNull(
+                parking,
+                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)
+        )).thenReturn(false);
+
+        parkingService.deleteParkingLocation(parkingId, "vendor@example.com");
+
+        assertTrue(parking.isDeleted());
+        verify(parkingLocationRepository).save(parking);
+    }
+
     private ParkingLocationRequestDto buildParkingRequest(int fourWheelerSlots, int twoWheelerSlots) {
         ParkingLocationRequestDto request = new ParkingLocationRequestDto();
         request.setName(" Thamel Plaza ");
@@ -152,5 +193,22 @@ class ParkingServiceImplTest {
         user.setRole(role);
         user.setApproved(true);
         return user;
+    }
+
+    private ParkingLocation buildParkingLocation(User vendor) {
+        ParkingLocation parking = new ParkingLocation();
+        ReflectionTestUtils.setField(parking, "id", UUID.randomUUID());
+        parking.setName("Thamel Plaza");
+        parking.setAddress("Thamel, Kathmandu");
+        parking.setLatitude(27.71520);
+        parking.setLongitude(85.31250);
+        parking.setTotalFourWheelerSlots(2);
+        parking.setAvailableFourWheelerSlots(2);
+        parking.setTotalTwoWheelerSlots(3);
+        parking.setAvailableTwoWheelerSlots(3);
+        parking.setFourWheelerRatePerHour(100.0);
+        parking.setTwoWheelerRatePerHour(50.0);
+        parking.setVendor(vendor);
+        return parking;
     }
 }

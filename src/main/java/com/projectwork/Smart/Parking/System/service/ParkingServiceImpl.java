@@ -212,6 +212,17 @@ public class ParkingServiceImpl implements ParkingService {
     @Transactional
     public void deleteParkingLocation(UUID id, String currentUserEmail) {
         ParkingLocation parking = resolveOwnedParking(id, currentUserEmail);
+
+        if (bookingRepository.existsByParkingLocationAndStatusInAndDeletedAtIsNull(
+                parking,
+                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)
+        )) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Cannot delete parking location with active bookings."
+            );
+        }
+
         parking.softDelete();
         parkingLocationRepository.save(parking);
     }
