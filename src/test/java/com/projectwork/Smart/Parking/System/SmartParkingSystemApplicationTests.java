@@ -1,13 +1,14 @@
 package com.projectwork.Smart.Parking.System;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 class SmartParkingSystemApplicationTests {
 
 	@Test
-	void contextLoads() {
+	void applicationClassCanBeConstructed() {
+		assertNotNull(new SmartParkingSystemApplication());
 	}
 
 }

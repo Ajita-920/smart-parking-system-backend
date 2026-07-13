@@ -1,16 +1,28 @@
 package com.projectwork.Smart.Parking.System.dto.response;
 
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.projectwork.Smart.Parking.System.entity.UserRole;
 import lombok.AllArgsConstructor;
+import lombok.Data;
+
+import java.util.UUID;
 
 @Data
 @AllArgsConstructor
 public class AuthResponseDto {
 
-    private String token;
-    private String type = "Bearer";
-    private Long userId;
+    private String accessToken;
+
+    @JsonIgnore
+    private String refreshToken;
+
+    private String tokenType;
+    private long expiresIn;
+
+    private UUID userId;
     private String name;
     private String email;
-    private String role;
+    private UserRole role;
+    private boolean banned;
+    private boolean approved;
 }

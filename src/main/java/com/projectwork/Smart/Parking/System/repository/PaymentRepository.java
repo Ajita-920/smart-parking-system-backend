@@ -1,15 +1,39 @@
 package com.projectwork.Smart.Parking.System.repository;
 
+import com.projectwork.Smart.Parking.System.entity.Booking;
 import com.projectwork.Smart.Parking.System.entity.Payment;
+import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
+import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
-public interface PaymentRepository extends JpaRepository<Payment, Long> {
+public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpecificationExecutor<Payment> {
 
+    Optional<Payment> findByIdAndDeletedAtIsNull(UUID id);
 
-    Optional<Payment> findByTransactionId(String oid);
-    //new added
-    Optional<Payment> findTopByBookingIdOrderByIdDesc(Long bookingId);
+    Optional<Payment> findByPidxAndDeletedAtIsNull(String pidx);
+
+    Optional<Payment> findByTransactionIdAndDeletedAtIsNull(String transactionId);
+
+    Optional<Payment> findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(
+            UUID bookingId,
+            PaymentStatus status);
+
+    Optional<Payment> findFirstByBooking_IdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID bookingId);
+
+    List<Payment> findByBookingAndDeletedAtIsNull(Booking booking);
+
+    List<Payment> findByBooking_IdAndDeletedAtIsNull(UUID bookingId);
+
+    List<Payment> findByStatusAndDeletedAtIsNull(PaymentStatus status);
+
+    List<Payment> findByPaymentMethodAndDeletedAtIsNull(PaymentMethod paymentMethod);
+
+    long countByStatusAndDeletedAtIsNull(PaymentStatus status);
+
+    long countByPaymentMethodAndDeletedAtIsNull(PaymentMethod paymentMethod);
 }
-

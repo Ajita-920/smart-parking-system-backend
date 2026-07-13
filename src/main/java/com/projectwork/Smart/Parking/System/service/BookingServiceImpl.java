@@ -1,188 +1,749 @@
 package com.projectwork.Smart.Parking.System.service;
 
 import com.projectwork.Smart.Parking.System.dto.request.BookingRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.VendorBookingStatusRequestDto;
+import com.projectwork.Smart.Parking.System.dto.request.WalkInBookingRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingCancelResponseDto;
 import com.projectwork.Smart.Parking.System.dto.response.BookingResponseDto;
 import com.projectwork.Smart.Parking.System.entity.Booking;
+import com.projectwork.Smart.Parking.System.entity.BookingStatus;
 import com.projectwork.Smart.Parking.System.entity.ParkingLocation;
+import com.projectwork.Smart.Parking.System.entity.ParkingSlot;
+import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
+import com.projectwork.Smart.Parking.System.entity.Payment;
+import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
+import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
+import com.projectwork.Smart.Parking.System.entity.RefundStatus;
 import com.projectwork.Smart.Parking.System.entity.User;
+import com.projectwork.Smart.Parking.System.entity.UserRole;
 import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import com.projectwork.Smart.Parking.System.repository.BookingRepository;
 import com.projectwork.Smart.Parking.System.repository.ParkingLocationRepository;
+import com.projectwork.Smart.Parking.System.repository.ParkingSlotRepository;
 import com.projectwork.Smart.Parking.System.repository.PaymentRepository;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
+/**
+ * Implements booking lifecycle rules, including slot reservation, cancellation,
+ * and vendor status updates.
+ */
 @Service
+@Slf4j
 public class BookingServiceImpl implements BookingService {
 
-    @Autowired
-    private BookingRepository bookingRepository;
-    @Autowired
-    private ParkingLocationRepository parkingLocationRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private PaymentRepository paymentRepository;
+        private static final BigDecimal DEFAULT_HOURLY_RATE = new BigDecimal("100.00");
+        private static final ZoneId DEFAULT_BUSINESS_ZONE = ZoneId.of("Asia/Kathmandu");
+        private static final List<BookingStatus> ACTIVE_DRIVER_BOOKING_STATUSES = List.of(
+                        BookingStatus.PENDING,
+                        BookingStatus.CONFIRMED);
 
-    @Override
-    @Transactional
-    public BookingResponseDto createBooking(BookingRequestDto request, String currentUserEmail) {
+        private final BookingRepository bookingRepository;
+        private final ParkingLocationRepository parkingLocationRepository;
+        private final ParkingSlotRepository parkingSlotRepository;
+        private final UserRepository userRepository;
+        private final PaymentRepository paymentRepository;
+        private final EmailService emailService;
 
-        User driver = userRepository.findByEmail(currentUserEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        @Value("${app.time-zone:Asia/Kathmandu}")
+        private String appTimeZone;
 
-        ParkingLocation location = parkingLocationRepository.findById(request.getParkingLocationId())
-                .orElseThrow(() -> new RuntimeException("Parking location not found"));
+        @Value("${app.booking.pending-expiration-minutes:15}")
+        private long pendingBookingExpirationMinutes;
 
-        // === VALIDATION 1: Slot availability ===
-        if (location.getAvailableSlots() <= 0) {
-            throw new RuntimeException("No slots available at this location!");
+        public BookingServiceImpl(
+                        BookingRepository bookingRepository,
+                        ParkingLocationRepository parkingLocationRepository,
+                        ParkingSlotRepository parkingSlotRepository,
+                        UserRepository userRepository,
+                        PaymentRepository paymentRepository,
+                        EmailService emailService) {
+                this.bookingRepository = bookingRepository;
+                this.parkingLocationRepository = parkingLocationRepository;
+                this.parkingSlotRepository = parkingSlotRepository;
+                this.userRepository = userRepository;
+                this.paymentRepository = paymentRepository;
+                this.emailService = emailService;
         }
 
-        // === VALIDATION 2: No overlapping booking (Double Booking Prevention) ===
-        List<Booking> overlaps = bookingRepository.findOverlappingBookings(
-                location.getId(), request.getStartTime(), request.getEndTime());
+        @Override
+        @Transactional
+        public BookingResponseDto createBooking(BookingRequestDto request, String currentUserEmail) {
+                User driver = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "User not found."));
 
-        if (!overlaps.isEmpty()) {
-            throw new RuntimeException("This time slot is already booked!");
+                if (driver.getRole() != UserRole.DRIVER) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "Only drivers can create bookings.");
+                }
+
+                if (bookingRepository.existsByDriverAndStatusInAndDeletedAtIsNull(
+                                driver,
+                                ACTIVE_DRIVER_BOOKING_STATUSES)) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "You already have an active booking. Cancel or complete it before creating another booking.");
+                }
+
+                ParkingLocation location = parkingLocationRepository
+                                .findByIdAndDeletedAtIsNull(request.getParkingLocationId())
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Parking location not found."));
+
+                VehicleType vehicleType = parseVehicleType(request.getVehicleType());
+
+                validateAvailableSlotCount(location, vehicleType);
+
+                ParkingSlot slot = parkingSlotRepository.findByIdAndDeletedAtIsNullForUpdate(request.getSlotId())
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Parking slot not found."));
+
+                if (!slot.getLocation().getId().equals(location.getId())) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Selected slot does not belong to this parking location.");
+                }
+
+                if (slot.getVehicleType() != vehicleType) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Selected slot does not match the requested vehicle type.");
+                }
+
+                if (slot.getStatus() != ParkingSlotStatus.AVAILABLE) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Selected slot is not available.");
+                }
+
+                slot.markReserved();
+                decrementAvailableSlotCount(location, vehicleType);
+
+                Booking booking = new Booking();
+                booking.setDriver(driver);
+                booking.setCustomerName(driver.getName());
+                booking.setCustomerPhone(driver.getPhone());
+                booking.setParkingLocation(location);
+                booking.setSlot(slot);
+                booking.setVehicleType(vehicleType);
+                booking.setVehicleNumber(request.getVehicleNumber().trim());
+                booking.setStartTime(request.getStartTime());
+                booking.setEndTime(request.getEndTime());
+                booking.setStatus(BookingStatus.PENDING);
+                booking.setTotalAmount(
+                                calculateAmount(location, vehicleType, request.getStartTime(), request.getEndTime()));
+
+                ParkingSlot savedSlot = parkingSlotRepository.save(slot);
+                ParkingLocation savedLocation = parkingLocationRepository.save(location);
+
+                booking.setSlot(savedSlot);
+                booking.setParkingLocation(savedLocation);
+
+                Booking savedBooking = bookingRepository.save(booking);
+
+                BookingResponseDto response = mapToResponse(savedBooking);
+                response.setMessage("Booking created successfully.");
+
+                return response;
         }
 
-        // Create booking
-        Booking booking = new Booking();
-        booking.setParkingLocation(location);
-        booking.setStartTime(request.getStartTime());
-        booking.setEndTime(request.getEndTime());
-        booking.setStatus("CONFIRMED");
-        booking.setVehicleType(request.getVehicleType());
-        booking.setTotalAmount(calculateAmount(location, request.getVehicleType(), request.getStartTime(), request.getEndTime()));
-        booking.setUser(driver);
-        booking.setDriver(driver);
+        @Scheduled(fixedDelayString = "${app.booking.pending-cleanup-delay-ms:60000}")
+        @Transactional
+        public void expirePendingBookings() {
+                Instant expiresBefore = Instant.now().minus(Duration.ofMinutes(pendingBookingExpirationMinutes));
+                List<Booking> expiredBookings = bookingRepository.findByStatusAndCreatedAtBeforeAndDeletedAtIsNull(
+                                BookingStatus.PENDING,
+                                expiresBefore);
 
-        Booking savedBooking = bookingRepository.save(booking);
-
-        // Reduce available slots
-        location.setAvailableSlots(location.getAvailableSlots() - 1);
-        parkingLocationRepository.save(location);
-
-        // Prepare response
-        BookingResponseDto response = new BookingResponseDto();
-        response.setBookingId(savedBooking.getId());
-        response.setParkingName(location.getName());
-        response.setStatus(savedBooking.getStatus());
-        response.setStartTime(savedBooking.getStartTime());
-        response.setEndTime(savedBooking.getEndTime());
-        response.setVehicleType(savedBooking.getVehicleType());
-        response.setTotalAmount(savedBooking.getTotalAmount());
-        response.setMessage("Booking confirmed successfully!");
-
-        return response;
-    }
-
-    @Override
-    public Booking saveBooking(Booking booking) {
-        return null;
-    }
-
-    @Override
-    public List<BookingResponseDto> getMyBookings(String email) {
-        User driver = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        List<Booking> bookings = bookingRepository.findByDriver(driver);
-
-        return bookings.stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
-    }
-
-    private BookingResponseDto mapToResponse(Booking booking) {
-        BookingResponseDto dto = new BookingResponseDto();
-        dto.setBookingId(booking.getId());
-        dto.setParkingName(booking.getParkingLocation().getName());
-        dto.setStatus(booking.getStatus());
-        dto.setStartTime(booking.getStartTime());
-        dto.setEndTime(booking.getEndTime());
-        dto.setVehicleType(booking.getVehicleType());
-        dto.setTotalAmount(booking.getTotalAmount());
-        dto.setRefundAmount(booking.getRefundAmount());
-        return dto;
-    }
-//new feature cancel added
-    @Override
-    @Transactional
-    public BookingCancelResponseDto cancelBooking(Long bookingId, String email) {
-        User driver = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Booking booking = bookingRepository.findByIdAndDriver(bookingId, driver)
-                .orElseThrow(() -> new RuntimeException("Booking not found for current user"));
-
-        if ("CANCELLED".equalsIgnoreCase(booking.getStatus()) || "CANCELLED_REFUNDED".equalsIgnoreCase(booking.getStatus())) {
-            throw new RuntimeException("Booking is already cancelled");
+                expiredBookings.forEach(booking -> {
+                        booking.markCancelled();
+                        releaseSlotAndIncreaseAvailability(booking);
+                        bookingRepository.save(booking);
+                });
         }
 
-        booking.setCancelledAt(LocalDateTime.now());
-        booking.setStatus("CANCELLED");
-        booking.setRefundAmount(0.0);
+        @Override
+        @Transactional
+        public BookingResponseDto createWalkInBooking(WalkInBookingRequestDto request, String currentUserEmail) {
+                User vendor = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Vendor not found."));
 
-        ParkingLocation location = booking.getParkingLocation();
-        location.setAvailableSlots(Math.min(location.getTotalSlots(), location.getAvailableSlots() + 1));
-        parkingLocationRepository.save(location);
+                if (vendor.getRole() != UserRole.VENDOR) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "Only vendors can create walk-in bookings.");
+                }
 
-        BookingCancelResponseDto response = new BookingCancelResponseDto();
-        response.setBookingId(booking.getId());
-        response.setStatus("CANCELLED");
-        response.setRefunded(false);
-        response.setRefundAmount(0.0);
-        response.setMessage("Booking cancelled. Refund is not eligible.");
+                ParkingLocation location = parkingLocationRepository
+                                .findByIdAndDeletedAtIsNull(request.getParkingLocationId())
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Parking location not found."));
 
-        boolean refundEligible = isRefundEligible(booking);
-        if (refundEligible) {
-            double refundAmount = booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0;
-            booking.setStatus("CANCELLED_REFUNDED");
-            booking.setRefundAmount(refundAmount);
+                if (location.getVendor() == null || !location.getVendor().getId().equals(vendor.getId())) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "You do not have permission to create bookings for this parking location.");
+                }
 
-            paymentRepository.findTopByBookingIdOrderByIdDesc(booking.getId()).ifPresent(payment -> {
-                payment.setStatus("REFUNDED");
-                payment.setPaidAt(LocalDateTime.now());
+                VehicleType vehicleType = parseVehicleType(request.getVehicleType());
+                validateAvailableSlotCount(location, vehicleType);
+
+                ParkingSlot slot = parkingSlotRepository.findByIdAndDeletedAtIsNullForUpdate(request.getSlotId())
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Parking slot not found."));
+
+                if (!slot.getLocation().getId().equals(location.getId())) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Selected slot does not belong to this parking location.");
+                }
+
+                if (slot.getVehicleType() != vehicleType) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Selected slot does not match the requested vehicle type.");
+                }
+
+                if (slot.getStatus() != ParkingSlotStatus.AVAILABLE) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Selected slot is no longer available.");
+                }
+
+                PaymentMethod paymentMethod = parsePaymentMethod(request.getPaymentMethod());
+
+                slot.markOccupied();
+                decrementAvailableSlotCount(location, vehicleType);
+
+                Booking booking = new Booking();
+                booking.setParkingLocation(location);
+                booking.setSlot(slot);
+                booking.setVehicleType(vehicleType);
+                booking.setCustomerName(request.getCustomerName());
+                booking.setCustomerPhone(request.getCustomerPhone());
+                booking.setVehicleNumber(request.getVehicleNumber());
+                booking.setWalkIn(true);
+                booking.setStartTime(request.getStartTime());
+                booking.setEndTime(request.getEndTime());
+                booking.setStatus(BookingStatus.CONFIRMED);
+                booking.setTotalAmount(
+                                calculateAmount(location, vehicleType, request.getStartTime(), request.getEndTime()));
+
+                ParkingSlot savedSlot = parkingSlotRepository.save(slot);
+                ParkingLocation savedLocation = parkingLocationRepository.save(location);
+                booking.setSlot(savedSlot);
+                booking.setParkingLocation(savedLocation);
+
+                Booking savedBooking = bookingRepository.save(booking);
+                createWalkInPayment(savedBooking, paymentMethod);
+
+                String walkInRecipientEmail = vendor.getEmail();
+                log.info("Walk-in booking {} persisted as CONFIRMED; dispatching confirmation email to '{}'",
+                                savedBooking.getId(), walkInRecipientEmail);
+                dispatchConfirmationEmail(savedBooking, walkInRecipientEmail);
+
+                BookingResponseDto response = mapToResponse(savedBooking);
+                response.setMessage("Walk-in booking created successfully.");
+                return response;
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public List<BookingResponseDto> getMyBookings(String currentUserEmail) {
+                User driver = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "User not found."));
+
+                return bookingRepository.findByDriverAndDeletedAtIsNull(driver)
+                                .stream()
+                                .map(this::mapToResponse)
+                                .toList();
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public BookingResponseDto getBookingById(java.util.UUID id, String currentUserEmail) {
+                Booking booking = bookingRepository.findByIdAndDeletedAtIsNull(id)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Booking not found."));
+
+                User currentUser = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "User not found."));
+
+                boolean isAdmin = currentUser.getRole() == UserRole.ADMIN;
+                boolean isBookingDriver = booking.getDriver() != null
+                                && booking.getDriver().getId().equals(currentUser.getId());
+                boolean isLocationVendor = currentUser.getRole() == UserRole.VENDOR
+                                && booking.getParkingLocation().getVendor().getId().equals(currentUser.getId());
+
+                if (!isAdmin && !isBookingDriver && !isLocationVendor) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "You do not have permission to view this booking.");
+                }
+
+                BookingResponseDto response = mapToResponse(booking);
+                response.setMessage("Booking fetched successfully.");
+                return response;
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public List<BookingResponseDto> getVendorBookings(String currentUserEmail, java.util.UUID locationId) {
+                User vendor = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Vendor not found."));
+
+                if (vendor.getRole() != UserRole.VENDOR) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "Only vendors can view vendor bookings.");
+                }
+
+                if (locationId != null) {
+                        ParkingLocation location = parkingLocationRepository.findByIdAndDeletedAtIsNull(locationId)
+                                        .orElseThrow(() -> new ResponseStatusException(
+                                                        HttpStatus.NOT_FOUND,
+                                                        "Parking location not found."));
+
+                        if (location.getVendor() == null || !location.getVendor().getId().equals(vendor.getId())) {
+                                throw new ResponseStatusException(
+                                                HttpStatus.FORBIDDEN,
+                                                "You do not have permission to view bookings for this parking location.");
+                        }
+
+                        return bookingRepository.findByParkingLocation_IdAndDeletedAtIsNull(locationId)
+                                        .stream()
+                                        .sorted(Comparator.comparing(Booking::getStartTime).reversed())
+                                        .map(this::mapToResponse)
+                                        .toList();
+                }
+
+                return bookingRepository.findByParkingLocation_Vendor_IdAndDeletedAtIsNull(vendor.getId())
+                                .stream()
+                                .sorted(Comparator.comparing(Booking::getStartTime).reversed())
+                                .map(this::mapToResponse)
+                                .toList();
+        }
+
+        @Override
+        @Transactional
+        public BookingCancelResponseDto cancelBooking(java.util.UUID bookingId, String email) {
+                User driver = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(email))
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "User not found."));
+
+                Booking booking = bookingRepository.findByIdAndDriverAndDeletedAtIsNull(bookingId, driver)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Booking not found for current user."));
+
+                if (booking.getStatus() == BookingStatus.CANCELLED) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Booking is already cancelled.");
+                }
+
+                if (booking.getStatus() == BookingStatus.COMPLETED) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Completed booking cannot be cancelled.");
+                }
+
+                if (booking.isWalkIn()) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Walk-in bookings cannot be cancelled from this endpoint.");
+                }
+
+                if (booking.getSlot() != null && booking.getSlot().getStatus() == ParkingSlotStatus.OCCUPIED) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Checked-in booking cannot be cancelled.");
+                }
+
+                booking.markCancelled();
+
+                releaseSlotAndIncreaseAvailability(booking);
+
+                BookingCancelResponseDto response = new BookingCancelResponseDto();
+                response.setBookingId(booking.getId());
+                response.setStatus(BookingStatus.CANCELLED.name());
+                response.setRefunded(false);
+
+                Optional<Payment> successfulPayment = paymentRepository
+                                .findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(
+                                                booking.getId(),
+                                                PaymentStatus.SUCCESS);
+
+                if (successfulPayment.isPresent()) {
+                        Payment payment = successfulPayment.get();
+                        BigDecimal refundAmount = payment.getAmount() != null
+                                        ? payment.getAmount()
+                                        : BigDecimal.ZERO;
+
+                        payment.markRefundPending(refundAmount);
+                        paymentRepository.save(payment);
+
+                        response.setRefundStatus(RefundStatus.PENDING.name());
+                        response.setRefundAmount(refundAmount);
+                        response.setMessage("Booking cancelled. Refund is pending.");
+                } else {
+                        response.setRefundStatus(RefundStatus.NONE.name());
+                        response.setRefundAmount(BigDecimal.ZERO);
+                        response.setMessage("Booking cancelled. No successful payment found for refund.");
+                }
+
+                bookingRepository.save(booking);
+                return response;
+        }
+
+        @Override
+        @Transactional
+        public BookingResponseDto updateVendorBookingStatus(
+                        java.util.UUID bookingId,
+                        VendorBookingStatusRequestDto request,
+                        String currentUserEmail) {
+                Booking booking = bookingRepository.findByIdAndDeletedAtIsNull(bookingId)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Booking not found."));
+
+                User vendor = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(currentUserEmail))
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Vendor not found."));
+
+                if (vendor.getRole() != UserRole.VENDOR) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "Only vendors can update booking status.");
+                }
+
+                if (booking.getParkingLocation() == null
+                                || booking.getParkingLocation().getVendor() == null
+                                || !booking.getParkingLocation().getVendor().getId().equals(vendor.getId())) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "You do not have permission to update this booking.");
+                }
+
+                String action = request.getAction().trim().toUpperCase();
+
+                if ("CHECK_IN".equals(action)) {
+                        checkInBooking(booking);
+                } else if ("COMPLETE".equals(action)) {
+                        completeBooking(booking);
+                } else {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Invalid action. Allowed values: CHECK_IN, COMPLETE.");
+                }
+
+                Booking savedBooking = bookingRepository.save(booking);
+                BookingResponseDto response = mapToResponse(savedBooking);
+                response.setMessage("Booking status updated successfully.");
+                return response;
+        }
+
+        private BookingResponseDto mapToResponse(Booking booking) {
+                BookingResponseDto dto = new BookingResponseDto();
+
+                dto.setBookingId(booking.getId());
+
+                if (booking.getDriver() != null) {
+                        dto.setDriverId(booking.getDriver().getId());
+                        dto.setDriverName(booking.getDriver().getName());
+                }
+
+                dto.setCustomerName(booking.getCustomerName());
+                dto.setCustomerPhone(booking.getCustomerPhone());
+                dto.setVehicleNumber(booking.getVehicleNumber());
+                dto.setWalkIn(booking.isWalkIn());
+
+                dto.setParkingLocationId(booking.getParkingLocation().getId());
+                dto.setParkingLocationName(booking.getParkingLocation().getName());
+                if (booking.getParkingLocation().getVendor() != null) {
+                        dto.setVendorId(booking.getParkingLocation().getVendor().getId());
+                        dto.setVendorName(booking.getParkingLocation().getVendor().getName());
+                }
+
+                dto.setSlotId(booking.getSlot().getId());
+                dto.setSlotNumber(booking.getSlot().getSlotNumber());
+                dto.setSlotStatus(booking.getSlot().getStatus());
+
+                if (booking.getVehicleType() != null) {
+                        dto.setVehicleType(booking.getVehicleType());
+                } else {
+                        dto.setVehicleType(booking.getSlot().getVehicleType());
+                }
+
+                dto.setStatus(booking.getStatus());
+                dto.setStartTime(booking.getStartTime());
+                dto.setEndTime(booking.getEndTime());
+                dto.setCreatedAt(booking.getCreatedAt());
+                dto.setCancelledAt(booking.getCancelledAt());
+                dto.setTotalAmount(booking.getTotalAmount());
+
+                Optional<Payment> paymentForDisplay = paymentRepository
+                                .findFirstByBooking_IdAndStatusAndDeletedAtIsNullOrderByPaidAtDesc(
+                                                booking.getId(),
+                                                PaymentStatus.SUCCESS)
+                                .or(() -> paymentRepository
+                                                .findFirstByBooking_IdAndDeletedAtIsNullOrderByCreatedAtDesc(
+                                                                booking.getId()));
+
+                paymentForDisplay
+                                .ifPresent(payment -> {
+                                        dto.setPaymentId(payment.getId());
+                                        dto.setPaymentStatus(payment.getStatus());
+                                        dto.setPaymentMethod(payment.getPaymentMethod());
+                                        dto.setPaidAt(payment.getPaidAt());
+                                });
+
+                return dto;
+        }
+
+        private void releaseSlotAndIncreaseAvailability(Booking booking) {
+                ParkingSlot slot = booking.getSlot();
+
+                if (slot == null) {
+                        return;
+                }
+
+                slot.setStatus(ParkingSlotStatus.AVAILABLE);
+                parkingSlotRepository.save(slot);
+
+                ParkingLocation location = booking.getParkingLocation();
+
+                if (location == null) {
+                        return;
+                }
+
+                incrementAvailableSlotCount(location, slot.getVehicleType());
+                parkingLocationRepository.save(location);
+        }
+
+        private void checkInBooking(Booking booking) {
+                if (booking.getStatus() != BookingStatus.CONFIRMED) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Only confirmed bookings can be checked in.");
+                }
+
+                ParkingSlot slot = booking.getSlot();
+
+                if (slot == null) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Booking has no assigned slot.");
+                }
+
+                if (slot.getStatus() != ParkingSlotStatus.BOOKED) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Only booked slots can be checked in.");
+                }
+
+                slot.markOccupied();
+                parkingSlotRepository.save(slot);
+        }
+
+        private void completeBooking(Booking booking) {
+                if (booking.getStatus() != BookingStatus.CONFIRMED) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Only confirmed bookings can be completed.");
+                }
+
+                ParkingSlot slot = booking.getSlot();
+
+                if (slot == null) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Booking has no assigned slot.");
+                }
+
+                if (slot.getStatus() != ParkingSlotStatus.OCCUPIED) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Only occupied slots can be completed.");
+                }
+
+                LocalDateTime completedAt = currentLocalDateTime();
+                booking.setEndTime(completedAt);
+                booking.setTotalAmount(calculateAmount(
+                                booking.getParkingLocation(),
+                                slot.getVehicleType(),
+                                booking.getStartTime(),
+                                completedAt));
+                booking.markCompleted();
+                slot.markAvailable();
+                parkingSlotRepository.save(slot);
+
+                ParkingLocation location = booking.getParkingLocation();
+                if (location != null) {
+                        incrementAvailableSlotCount(location, slot.getVehicleType());
+                        parkingLocationRepository.save(location);
+                }
+        }
+
+        private void dispatchConfirmationEmail(Booking booking, String recipientEmail) {
+                if (booking == null) {
+                        log.warn("Cannot dispatch booking confirmation email because the booking object is null.");
+                        return;
+                }
+
+                if (recipientEmail == null || recipientEmail.isBlank()) {
+                        log.warn("Skipping booking confirmation email for booking {} because the recipient email is blank",
+                                        booking.getId());
+                        return;
+                }
+
+                try {
+                        BookingResponseDto bookingResponseDto = mapToResponse(booking);
+                        bookingResponseDto.setMessage("Booking created successfully.");
+                        log.info("Calling EmailService for booking {} with recipient '{}'", booking.getId(), recipientEmail);
+                        emailService.sendBookingConfirmation(bookingResponseDto, recipientEmail);
+                        log.info("EmailService invocation completed for booking {}", booking.getId());
+                } catch (Exception e) {
+                        log.error("Booking confirmation email dispatch failed for booking {}", booking.getId(), e);
+                }
+        }
+
+        private LocalDateTime currentLocalDateTime() {
+                ZoneId zoneId = appTimeZone == null || appTimeZone.isBlank()
+                                ? DEFAULT_BUSINESS_ZONE
+                                : ZoneId.of(appTimeZone);
+
+                return LocalDateTime.now(zoneId);
+        }
+
+        private BigDecimal calculateAmount(
+                        ParkingLocation location,
+                        VehicleType vehicleType,
+                        LocalDateTime startTime,
+                        LocalDateTime endTime) {
+                long minutes = Duration.between(startTime, endTime).toMinutes();
+                long billableHours = Math.max(1, (long) Math.ceil(minutes / 60.0));
+
+                BigDecimal ratePerHour = DEFAULT_HOURLY_RATE;
+
+                if (vehicleType == VehicleType.FOUR_WHEELER && location.getFourWheelerRatePerHour() != null) {
+                        ratePerHour = BigDecimal.valueOf(location.getFourWheelerRatePerHour());
+                }
+
+                if (vehicleType == VehicleType.TWO_WHEELER && location.getTwoWheelerRatePerHour() != null) {
+                        ratePerHour = BigDecimal.valueOf(location.getTwoWheelerRatePerHour());
+                }
+
+                return ratePerHour.multiply(BigDecimal.valueOf(billableHours));
+        }
+
+        private void createWalkInPayment(Booking booking, PaymentMethod paymentMethod) {
+                Payment payment = new Payment();
+                payment.setBooking(booking);
+                payment.setAmount(booking.getTotalAmount());
+                payment.setPaymentMethod(paymentMethod);
+                payment.setTransactionId(generateTransactionId());
+
+                payment.markSuccess();
+
                 paymentRepository.save(payment);
-            });
-
-            response.setStatus("CANCELLED_REFUNDED");
-            response.setRefunded(true);
-            response.setRefundAmount(refundAmount);
-            response.setMessage("Booking cancelled and full refund marked.");
         }
 
-        bookingRepository.save(booking);
-        return response;
-    }
-
-    private boolean isRefundEligible(Booking booking) {
-        return booking.getStartTime() != null &&
-                booking.getStartTime().isAfter(LocalDateTime.now().plusHours(1));
-    }
-
-    private double calculateAmount(ParkingLocation location, VehicleType vehicleType, LocalDateTime startTime, LocalDateTime endTime) {
-        long minutes = Duration.between(startTime, endTime).toMinutes();
-        long billableHours = Math.max(1, (long) Math.ceil(minutes / 60.0));
-
-        double fallbackRate = 100.0;
-        double ratePerHour;
-        if (vehicleType == VehicleType.FOUR_WHEELER) {
-            ratePerHour = location.getFourWheelerRatePerHour() != null ? location.getFourWheelerRatePerHour() : fallbackRate;
-        } else {
-            ratePerHour = location.getTwoWheelerRatePerHour() != null ? location.getTwoWheelerRatePerHour() : fallbackRate;
+        private PaymentMethod parsePaymentMethod(String paymentMethod) {
+                try {
+                        return PaymentMethod.valueOf(paymentMethod.trim().toUpperCase());
+                } catch (IllegalArgumentException ex) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Invalid payment method. Allowed values: CASH, KHALTI, ESEWA.");
+                }
         }
 
-        return ratePerHour * billableHours;
-    }
+        private String generateTransactionId() {
+                return "TXN-" + java.util.UUID.randomUUID()
+                                .toString()
+                                .substring(0, 8)
+                                .toUpperCase();
+        }
+
+        private void validateAvailableSlotCount(ParkingLocation location, VehicleType vehicleType) {
+                if (vehicleType == VehicleType.FOUR_WHEELER && location.getAvailableFourWheelerSlots() <= 0) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "No available four-wheeler slots at this location.");
+                }
+
+                if (vehicleType == VehicleType.TWO_WHEELER && location.getAvailableTwoWheelerSlots() <= 0) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "No available two-wheeler slots at this location.");
+                }
+        }
+
+        private void decrementAvailableSlotCount(ParkingLocation location, VehicleType vehicleType) {
+                if (vehicleType == VehicleType.FOUR_WHEELER) {
+                        location.setAvailableFourWheelerSlots(location.getAvailableFourWheelerSlots() - 1);
+                } else {
+                        location.setAvailableTwoWheelerSlots(location.getAvailableTwoWheelerSlots() - 1);
+                }
+        }
+
+        private void incrementAvailableSlotCount(ParkingLocation location, VehicleType vehicleType) {
+                if (vehicleType == VehicleType.FOUR_WHEELER) {
+                        int current = location.getAvailableFourWheelerSlots();
+                        int total = location.getTotalFourWheelerSlots();
+                        location.setAvailableFourWheelerSlots(Math.min(total, current + 1));
+                } else {
+                        int current = location.getAvailableTwoWheelerSlots();
+                        int total = location.getTotalTwoWheelerSlots();
+                        location.setAvailableTwoWheelerSlots(Math.min(total, current + 1));
+                }
+        }
+
+        private VehicleType parseVehicleType(String vehicleType) {
+                try {
+                        return VehicleType.valueOf(vehicleType.trim().toUpperCase());
+                } catch (IllegalArgumentException ex) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Invalid vehicle type. Allowed values: TWO_WHEELER, FOUR_WHEELER.");
+                }
+        }
+
+        private String normalizeEmail(String email) {
+                return email.trim().toLowerCase();
+        }
 }

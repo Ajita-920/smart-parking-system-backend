@@ -1,6 +1,7 @@
 package com.projectwork.Smart.Parking.System.config;
 
 import com.projectwork.Smart.Parking.System.entity.User;
+import com.projectwork.Smart.Parking.System.entity.UserRole;
 import com.projectwork.Smart.Parking.System.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,14 +25,14 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         log.info("Seed initialization started");
 
-        seedUserIfMissing("System Admin", "admin@parking.com", "Admin@123", "9800000000", "ADMIN");
-        seedUserIfMissing("Vendor One", "vendor@parking.com", "Vendor@123", "9800000001", "VENDOR");
-        seedUserIfMissing("Driver One", "driver@parking.com", "Driver@123", "9800000002", "DRIVER");
+        seedUserIfMissing("System Admin", "admin@parking.com", "Admin@123", "9800000000", UserRole.ADMIN);
+        seedUserIfMissing("Vendor One", "vendor@parking.com", "Vendor@123", "9800000001", UserRole.VENDOR);
+        seedUserIfMissing("Driver One", "driver@parking.com", "Driver@123", "9800000002", UserRole.DRIVER);
 
         log.info("Seed initialization completed");
     }
 
-    private void seedUserIfMissing(String name, String email, String rawPassword, String phone, String role) {
+    private void seedUserIfMissing(String name, String email, String rawPassword, String phone, UserRole role) {
         if (userRepository.findByEmail(email).isPresent()) {
             log.info("Seed skipped: {} already exists", email);
             return;
@@ -43,6 +44,7 @@ public class DataInitializer implements CommandLineRunner {
         user.setPassword(passwordEncoder.encode(rawPassword));
         user.setPhone(phone);
         user.setRole(role);
+        user.setApproved(true);
         userRepository.save(user);
 
         log.info("Seed inserted: {} ({})", email, role);

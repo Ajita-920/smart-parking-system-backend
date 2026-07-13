@@ -1,51 +1,48 @@
-version: "3.9"
-
 services:
-  backend:
-    build:
-      context: .
-      target: development
-    container_name: spring-backend
-    ports:
-      - "8080:8080"
-    volumes:
-      - .:/app
-      - m2_cache:/root/.m2
-    env_file: .env.backend
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - default
-      - smart-parking-dev-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
-  db:
+  postgresdb:
     image: postgres:16-alpine
-    container_name: postgres-db
-    restart: always
-    env_file:
-      - .env.database
+    environment:
+      POSTGRES_DB: smart_parking
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - smart-parking-dev-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d smart_parking"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+
+  backend:
+    build:
+      context: .
+      target: development
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - .:/app
+      - m2_cache:/root/.m2
+    env_file:
+      - .env.backend.dev
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+    networks:
+      - smart-parking-dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
-  pgdata:
   m2_cache:
+  postgres_data:
 
 networks:
   smart-parking-dev-network:

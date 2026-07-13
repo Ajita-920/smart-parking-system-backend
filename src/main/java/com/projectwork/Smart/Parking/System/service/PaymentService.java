@@ -4,13 +4,30 @@ import com.projectwork.Smart.Parking.System.dto.request.PaymentRequestDto;
 import com.projectwork.Smart.Parking.System.dto.response.PaymentResponseDto;
 import com.projectwork.Smart.Parking.System.entity.Payment;
 
+import java.util.UUID;
+
+/**
+ * Payment use cases and low-level payment lookups.
+ */
 public interface PaymentService {
 
-        PaymentResponseDto initiateKhaltiPayment(PaymentRequestDto request);
+    /**
+     * Creates a Khalti payment initiation request.
+     */
+    PaymentResponseDto initiateKhaltiPayment(PaymentRequestDto request);
 
-        PaymentResponseDto verifyKhaltiPayment(String pidx);
+    /**
+     * Verifies a Khalti transaction by pidx and updates local payment state.
+     */
+    PaymentResponseDto verifyKhaltiPayment(String pidx);
 
-        Payment processPayment(Payment payment);
+    /**
+     * Persists or processes an existing Payment entity.
+     */
+    Payment processPayment(Payment payment);
 
-    Payment getPaymentById(Long id);
+    /**
+     * Finds a payment by id.
+     */
+    Payment getPaymentById(UUID id);
 }

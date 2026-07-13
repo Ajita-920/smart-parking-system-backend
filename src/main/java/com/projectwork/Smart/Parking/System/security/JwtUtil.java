@@ -4,53 +4,88 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
 
-    // Make the key at least 256 bits for HS256
-    private static final String SECRET = "yourSuperSecretKeyForSmartParkingSystem2026MakeItLongerInProduction";
-    private static final Key SECRET_KEY = Keys.hmacShaKeyFor(SECRET.getBytes());
+    private static final String ACCESS_TOKEN_TYPE = "ACCESS";
 
-    // Generate token
-    public String generateToken(String email, String role, Long userId) {
-        String roleWithPrefix = "ROLE_" + role.toUpperCase();   // → "ROLE_USER"
+    @Value("${app.jwt.secret:yourSuperSecretKeyForSmartParkingSystem2026MakeItLongerInProduction}")
+    private String jwtSecret;
+
+    @Value("${app.jwt.access-token-expiration-ms:900000}")
+    private long accessTokenExpirationMs;
+
+    public String generateAccessToken(String email, String role, UUID userId) {
+        Instant now = Instant.now();
+        Instant expiresAt = now.plusMillis(accessTokenExpirationMs);
+        String normalizedRole = role.toUpperCase();
+        String roleWithPrefix = "ROLE_" + normalizedRole;
 
         return Jwts.builder()
+                .setId(UUID.randomUUID().toString())
                 .setSubject(email)
-                .claim("authorities", List.of(roleWithPrefix))   // or "roles"
-                .claim("userId", userId)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
-                .signWith(SECRET_KEY, SignatureAlgorithm.HS256)
+                .claim("type", ACCESS_TOKEN_TYPE)
+                .claim("role", normalizedRole)
+                .claim("authorities", List.of(roleWithPrefix))
+                .claim("userId", userId.toString())
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(expiresAt))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    // Extract username/email
+    /**
+     * Backward-compatible alias. Prefer generateAccessToken(...).
+     */
+    public String generateToken(String email, String role, UUID userId) {
+        return generateAccessToken(email, role, userId);
+    }
+
     public String extractUsername(String token) {
         return extractAllClaims(token).getSubject();
     }
 
-    // Validate token
-    public boolean validateToken(String token, String userEmail) {
-        final String email = extractUsername(token);
-        return (email.equals(userEmail) && !isTokenExpired(token));
+    public String extractJti(String token) {
+        return extractAllClaims(token).getId();
     }
 
-    private boolean isTokenExpired(String token) {
-        return extractAllClaims(token).getExpiration().before(new Date());
+    public Instant extractExpirationInstant(String token) {
+        return extractAllClaims(token).getExpiration().toInstant();
+    }
+
+    public boolean validateToken(String token, String userEmail) {
+        Claims claims = extractAllClaims(token);
+        String email = claims.getSubject();
+        String tokenType = claims.get("type", String.class);
+
+        return email.equals(userEmail)
+                && ACCESS_TOKEN_TYPE.equals(tokenType)
+                && claims.getExpiration().after(new Date());
+    }
+
+    public long getAccessTokenExpiresInSeconds() {
+        return accessTokenExpirationMs / 1000;
     }
 
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(SECRET_KEY)
+                .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
+    }
+
+    private Key getSigningKey() {
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 }

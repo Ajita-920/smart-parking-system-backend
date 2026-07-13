@@ -1,19 +1,55 @@
 package com.projectwork.Smart.Parking.System.dto.response;
 
+import com.projectwork.Smart.Parking.System.entity.BookingStatus;
+import com.projectwork.Smart.Parking.System.entity.PaymentMethod;
+import com.projectwork.Smart.Parking.System.entity.PaymentStatus;
+import com.projectwork.Smart.Parking.System.entity.ParkingSlotStatus;
 import com.projectwork.Smart.Parking.System.entity.VehicleType;
 import lombok.Data;
+
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 public class BookingResponseDto {
-    private Long bookingId;
-    private String parkingName;
-    private String status;
+
+    private UUID bookingId;
+
+    private UUID driverId;
+    private String driverName;
+
+    private String customerName;
+    private String customerPhone;
+    private String vehicleNumber;
+    private boolean walkIn;
+
+    private UUID parkingLocationId;
+    private String parkingLocationName;
+    private UUID vendorId;
+    private String vendorName;
+
+    private UUID slotId;
+    private String slotNumber;
+    private ParkingSlotStatus slotStatus;
+
+    private VehicleType vehicleType;
+
+    private BookingStatus status;
+
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    private double totalAmount;
-    //new refund amount and vehicle type added
-    private VehicleType vehicleType;
-    private Double refundAmount;
+
+    private Instant createdAt;
+    private Instant cancelledAt;
+
+    private BigDecimal totalAmount;
+
     private String message;
+
+    private UUID paymentId;
+    private PaymentStatus paymentStatus;
+    private PaymentMethod paymentMethod;
+    private Instant paidAt;
 }
