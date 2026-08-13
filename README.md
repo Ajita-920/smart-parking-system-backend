@@ -1,6 +1,6 @@
-# Smart Parking System Backend
+# Sajilo Parking Backend
 
-Backend API for the Smart Parking System project. It is built with Spring Boot and provides role-based REST APIs for drivers, vendors, and admins to manage parking discovery, bookings, slot availability, payments, user profiles, and dashboards.
+Backend API for Sajilo Parking. It is built with Spring Boot and provides role-based REST APIs for drivers, vendors, and admins to manage parking discovery, bookings, slot availability, payments, user profiles, and dashboards.
 
 ## Current Stack
 
